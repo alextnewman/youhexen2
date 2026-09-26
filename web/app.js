@@ -3,7 +3,8 @@ import { hasRequiredBaseAssets, mapImportedPath } from './lib/paths.js';
 import {
   createSaveBundle, getPakCompatibilityWarnings, isSavePath, planSaveImport, sha256, validateSaveBundle,
 } from './lib/save-bundle.js';
-import { PhoneControls, PHONE_CONTROL_KEYCODES } from './lib/phone-controls.js';
+import { PhoneControls } from './lib/phone-controls.js';
+import { HEXEN_TOUCH_KEYCODES } from './lib/hexen-touch-keymap.js';
 import { GyroAim } from './lib/gyro-aim.js';
 import { probeWebGPU } from './lib/webgpu-probe.js';
 
@@ -59,6 +60,9 @@ const state = {
     gyroAim: false,
     gyroSensitivity: 1,
     gyroInvertY: false,
+    /* Touch drag-look owns its Y inversion independently: the stick setting
+     * (joy_invert) and the gyro setting must never silently reverse it. */
+    touchInvertY: false,
     perfCapture: false,
     phoneHintSeen: false,
     /* Which WebAssembly bundle to load at launcher startup:
@@ -707,6 +711,7 @@ function loadPreferences() {
     const gyroSensitivity = Number(saved.gyroSensitivity);
     if (Number.isFinite(gyroSensitivity) && gyroSensitivity >= 0.25 && gyroSensitivity <= 2) state.preferences.gyroSensitivity = gyroSensitivity;
     state.preferences.gyroInvertY = Boolean(saved.gyroInvertY);
+    state.preferences.touchInvertY = Boolean(saved.touchInvertY);
     state.preferences.perfCapture = typeof saved.perfCapture === 'boolean'
       ? saved.perfCapture
       : Number(saved.perfOverlay) > 0;
@@ -753,6 +758,7 @@ function applyPreferences() {
   if (ui.gyroAimSetting) ui.gyroAimSetting.value = state.preferences.gyroAim ? 'on' : 'off';
   if (ui.gyroSensitivitySetting) ui.gyroSensitivitySetting.value = String(state.preferences.gyroSensitivity);
   if (ui.gyroInvertYSetting) ui.gyroInvertYSetting.checked = state.preferences.gyroInvertY;
+  if (ui.touchInvertYSetting) ui.touchInvertYSetting.checked = state.preferences.touchInvertY;
   if (ui.perfSetting) ui.perfSetting.value = state.preferences.perfCapture ? '1' : '0';
   if (ui.rendererSetting) ui.rendererSetting.value = state.preferences.renderer;
   if (ui.phoneHint && state.preferences.phoneHintSeen) {
@@ -808,6 +814,11 @@ function engineLook(dx, dy) {
 function engineGyroLook(dx, dy) {
   if (!state.runtimeReady || state.runtimeExited) return;
   callEngine('Web_GyroLook', null, [['number', dx], ['number', dy]]);
+}
+
+function engineMove(x, y) {
+  if (!state.runtimeReady || state.runtimeExited) return;
+  callEngine('Web_TouchMove', null, [['number', x], ['number', y]]);
 }
 
 function releasePhoneInputs() {
@@ -908,8 +919,8 @@ function updateTouchOnlyEnvironment(forceOff = false) {
 
 function togglePhoneMenuButton() {
   releasePhoneInputs();
-  engineKey(PHONE_CONTROL_KEYCODES.menu, true);
-  engineKey(PHONE_CONTROL_KEYCODES.menu, false);
+  engineKey(HEXEN_TOUCH_KEYCODES.menu, true);
+  engineKey(HEXEN_TOUCH_KEYCODES.menu, false);
 }
 
 function closePhoneOverlay() {
@@ -1437,6 +1448,7 @@ function bindUi() {
     gyroAimSetting: document.getElementById('gyro-aim-setting'),
     gyroSensitivitySetting: document.getElementById('gyro-sensitivity-setting'),
     gyroInvertYSetting: document.getElementById('gyro-invert-y-setting'),
+    touchInvertYSetting: document.getElementById('touch-invert-y-setting'),
     gyroMessage: document.getElementById('gyro-message'),
     perfSetting: document.getElementById('perf-setting'),
     perfMessage: document.getElementById('perf-message'),
@@ -1458,8 +1470,11 @@ function bindUi() {
 
   state.phoneControls = new PhoneControls(ui.phoneControlsRoot, {
     key: engineKey,
-    look: engineLook,
-  }, { lookSensitivity: state.preferences.lookSensitivity });
+    /* Touch drag-look inversion is a launcher-side sign flip: Web_TouchLook
+     * is the touch-drag path only, so the mouse path is unaffected. */
+    look: (dx, dy) => engineLook(dx, state.preferences.touchInvertY ? -dy : dy),
+    move: engineMove,
+  }, { lookSensitivity: state.preferences.lookSensitivity, keys: HEXEN_TOUCH_KEYCODES });
   state.phoneControls.attach();
   state.gyroAim = new GyroAim({
     look: engineGyroLook,
@@ -1521,8 +1536,8 @@ function bindUi() {
   ui.phoneMenuButton?.addEventListener('click', togglePhoneMenuButton);
   ui.phoneResumeButton?.addEventListener('click', closePhoneOverlay);
   ui.phoneEscapeButton?.addEventListener('click', () => {
-    engineKey(PHONE_CONTROL_KEYCODES.menu, true);
-    engineKey(PHONE_CONTROL_KEYCODES.menu, false);
+    engineKey(HEXEN_TOUCH_KEYCODES.menu, true);
+    engineKey(HEXEN_TOUCH_KEYCODES.menu, false);
     closePhoneOverlay();
   });
   ui.phoneExitButton?.addEventListener('click', () => {
@@ -1564,6 +1579,11 @@ function bindUi() {
   });
   ui.gyroInvertYSetting?.addEventListener('change', () => {
     state.preferences.gyroInvertY = ui.gyroInvertYSetting.checked;
+    savePreferences();
+    applyPreferences();
+  });
+  ui.touchInvertYSetting?.addEventListener('change', () => {
+    state.preferences.touchInvertY = ui.touchInvertYSetting.checked;
     savePreferences();
     applyPreferences();
   });

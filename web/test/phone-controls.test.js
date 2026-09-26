@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import vm from 'node:vm';
-import { PhoneControls, PHONE_CONTROL_KEYCODES } from '../lib/phone-controls.js';
+import { PhoneControls } from '../lib/phone-controls.js';
+import { HEXEN_TOUCH_KEYCODES } from '../lib/hexen-touch-keymap.js';
+
+const KEYS = HEXEN_TOUCH_KEYCODES;
 
 function makeElement(action, rect = { left: 0, top: 0, width: 120, height: 120 }) {
   const listeners = new Map();
@@ -34,11 +37,15 @@ function pointer(target, pointerId, x, y) {
   };
 }
 
-test('stick owns one pointer and transitions movement keys without sticking', () => {
+test('stick emits an analog vector with a walk-to-run sweep, zeroed on release', () => {
   const root = makeElement(null);
   const stick = makeElement('stick');
-  const events = [];
-  const controls = new PhoneControls(root, { key: (key, down) => events.push([key, down]), look() {} });
+  const moves = [];
+  const controls = new PhoneControls(root, {
+    key() {},
+    look() {},
+    move: (x, y) => moves.push([x, y]),
+  }, { keys: KEYS });
   controls.attach();
 
   root.dispatch('pointerdown', pointer(stick, 1, 60, 60));
@@ -46,12 +53,36 @@ test('stick owns one pointer and transitions movement keys without sticking', ()
   root.dispatch('pointermove', pointer(stick, 1, 120, 60));
   root.dispatch('pointerup', pointer(stick, 1, 120, 60));
 
-  assert.deepEqual(events, [
-    [PHONE_CONTROL_KEYCODES.forward, true],
-    [PHONE_CONTROL_KEYCODES.forward, false],
-    [PHONE_CONTROL_KEYCODES.right, true],
-    [PHONE_CONTROL_KEYCODES.right, false],
+  assert.deepEqual(moves, [
+    [0, -1],
+    [1, 0],
+    [0, 0],
   ]);
+});
+
+test('stick deadzone swallows the rest position and rescales the sweep', () => {
+  const root = makeElement(null);
+  const stick = makeElement('stick');
+  const moves = [];
+  const controls = new PhoneControls(root, {
+    key() {},
+    look() {},
+    move: (x, y) => moves.push([x, y]),
+  }, { keys: KEYS, stickDeadZone: 0.18 });
+  controls.attach();
+
+  root.dispatch('pointerdown', pointer(stick, 1, 60, 60));
+  // 6px drift: magnitude 0.1, inside the deadzone — silence.
+  root.dispatch('pointermove', pointer(stick, 1, 60, 54));
+  // Half deflection: magnitude 0.5 rescales to (0.5 - 0.18) / 0.82.
+  root.dispatch('pointermove', pointer(stick, 1, 60, 30));
+  root.dispatch('pointerup', pointer(stick, 1, 60, 30));
+
+  assert.equal(moves.length, 2);
+  assert.deepEqual(moves[1], [0, 0]);
+  const expected = (0.5 - 0.18) / (1 - 0.18);
+  assert.ok(Math.abs(moves[0][0]) < 1e-9);
+  assert.ok(Math.abs(moves[0][1] + expected) < 1e-9, `half deflection walks at ${expected}`);
 });
 
 test('multi-touch buttons and look region keep independent pointer ownership', () => {
@@ -63,7 +94,7 @@ test('multi-touch buttons and look region keep independent pointer ownership', (
   const controls = new PhoneControls(root, {
     key: (key, down) => keys.push([key, down]),
     look: (dx, dy) => looks.push([dx, dy]),
-  }, { lookSensitivity: 2, maxLookDelta: 10 });
+  }, { lookSensitivity: 2, maxLookDelta: 10, keys: KEYS });
   controls.attach();
 
   root.dispatch('pointerdown', pointer(attack, 7, 10, 10));
@@ -71,35 +102,77 @@ test('multi-touch buttons and look region keep independent pointer ownership', (
   root.dispatch('pointermove', pointer(look, 8, 140, 90));
   root.dispatch('pointerup', pointer(attack, 7, 10, 10));
 
-  assert.deepEqual(keys, [[PHONE_CONTROL_KEYCODES.attack, true], [PHONE_CONTROL_KEYCODES.attack, false]]);
+  assert.deepEqual(keys, [[KEYS.attack, true], [KEYS.attack, false]]);
   assert.deepEqual(looks, [[20, -20]], 'look deltas are clamped before sensitivity scaling');
 });
 
-test('menu back button presses the controller B key', () => {
+test('fast flicks survive the look clamp instead of being truncated', () => {
+  const root = makeElement(null);
+  const look = makeElement('look');
+  const looks = [];
+  const controls = new PhoneControls(root, {
+    key() {},
+    look: (dx, dy) => looks.push([dx, dy]),
+  }, { keys: KEYS });
+  controls.attach();
+
+  root.dispatch('pointerdown', pointer(look, 8, 100, 100));
+  root.dispatch('pointermove', pointer(look, 8, 300, 100));
+
+  assert.deepEqual(looks, [[200, 0]], 'a 200px flick must not be cut down to the old 48px ceiling');
+});
+
+test('button presses buzz when haptics are available', () => {
+  const vibrated = [];
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  Object.defineProperty(globalThis, 'navigator', {
+    value: { vibrate: (ms) => vibrated.push(ms) },
+    configurable: true,
+  });
+  try {
+    const root = makeElement(null);
+    const attack = makeElement('attack');
+    const controls = new PhoneControls(root, {
+      key() {},
+      look() {},
+    }, { keys: KEYS });
+    controls.attach();
+
+    root.dispatch('pointerdown', pointer(attack, 7, 10, 10));
+    root.dispatch('pointerup', pointer(attack, 7, 10, 10));
+
+    assert.deepEqual(vibrated, [8], 'one buzz on press, none on release');
+  } finally {
+    if (descriptor) Object.defineProperty(globalThis, 'navigator', descriptor);
+    else delete globalThis.navigator;
+  }
+});
+
+test('menu back button presses the menu-back key', () => {
   const root = makeElement(null);
   const back = makeElement('menuBack');
   const events = [];
-  const controls = new PhoneControls(root, { key: (key, down) => events.push([key, down]), look() {} });
+  const controls = new PhoneControls(root, { key: (key, down) => events.push([key, down]), look() {} }, { keys: KEYS });
   controls.attach();
 
   root.dispatch('pointerdown', pointer(back, 11, 10, 10));
   root.dispatch('pointerup', pointer(back, 11, 10, 10));
 
   assert.deepEqual(events, [
-    [PHONE_CONTROL_KEYCODES.menuBack, true],
-    [PHONE_CONTROL_KEYCODES.menuBack, false],
+    [KEYS.menuBack, true],
+    [KEYS.menuBack, false],
   ]);
 });
 
 test('gameplay controls use movement and action bindings that match their labels', () => {
   assert.deepEqual({
-    forward: PHONE_CONTROL_KEYCODES.forward,
-    back: PHONE_CONTROL_KEYCODES.back,
-    left: PHONE_CONTROL_KEYCODES.left,
-    right: PHONE_CONTROL_KEYCODES.right,
-    attack: PHONE_CONTROL_KEYCODES.attack,
-    jump: PHONE_CONTROL_KEYCODES.jump,
-    use: PHONE_CONTROL_KEYCODES.use,
+    forward: HEXEN_TOUCH_KEYCODES.forward,
+    back: HEXEN_TOUCH_KEYCODES.back,
+    left: HEXEN_TOUCH_KEYCODES.left,
+    right: HEXEN_TOUCH_KEYCODES.right,
+    attack: HEXEN_TOUCH_KEYCODES.attack,
+    jump: HEXEN_TOUCH_KEYCODES.jump,
+    use: HEXEN_TOUCH_KEYCODES.use,
   }, {
     forward: 272, // K_TOUCH_FORWARD
     back: 273, // K_TOUCH_BACK
@@ -116,7 +189,7 @@ test('each touch action rejects a second pointer', () => {
   const attack = makeElement('attack');
   const stick = makeElement('stick');
   const events = [];
-  const controls = new PhoneControls(root, { key: (key, down) => events.push([key, down]), look() {} });
+  const controls = new PhoneControls(root, { key: (key, down) => events.push([key, down]), look() {} }, { keys: KEYS });
   controls.attach();
 
   root.dispatch('pointerdown', pointer(attack, 1, 10, 10));
@@ -127,17 +200,22 @@ test('each touch action rejects a second pointer', () => {
   root.dispatch('pointermove', pointer(stick, 4, 60, 0));
 
   assert.deepEqual(events, [
-    [PHONE_CONTROL_KEYCODES.attack, true],
-    [PHONE_CONTROL_KEYCODES.attack, false],
+    [KEYS.attack, true],
+    [KEYS.attack, false],
   ]);
 });
 
-test('releaseAll clears button and stick keys after cancellation or backgrounding', () => {
+test('releaseAll clears button keys and zeroes the stick vector', () => {
   const root = makeElement(null);
   const stick = makeElement('stick');
   const jump = makeElement('jump');
   const events = [];
-  const controls = new PhoneControls(root, { key: (key, down) => events.push([key, down]), look() {} });
+  const moves = [];
+  const controls = new PhoneControls(root, {
+    key: (key, down) => events.push([key, down]),
+    look() {},
+    move: (x, y) => moves.push([x, y]),
+  }, { keys: KEYS });
   controls.attach();
 
   root.dispatch('pointerdown', pointer(stick, 1, 60, 60));
@@ -145,11 +223,10 @@ test('releaseAll clears button and stick keys after cancellation or backgroundin
   root.dispatch('pointerdown', pointer(jump, 2, 0, 0));
   controls.releaseAll();
 
+  assert.deepEqual(moves, [[0, -1], [0, 0]]);
   assert.deepEqual(events, [
-    [PHONE_CONTROL_KEYCODES.forward, true],
-    [PHONE_CONTROL_KEYCODES.jump, true],
-    [PHONE_CONTROL_KEYCODES.forward, false],
-    [PHONE_CONTROL_KEYCODES.jump, false],
+    [KEYS.jump, true],
+    [KEYS.jump, false],
   ]);
 });
 
@@ -176,6 +253,7 @@ test('phone mode DOM includes playing layout, touch visibility rules, and quit h
   assert.match(html, /data-phone-action="menuBack"[^>]*>Back<\/button>/);
   assert.match(html, /data-phone-action="menuSelect"[^>]*>Select<\/button>/);
   assert.match(html, /data-phone-action="menu"[^>]*>Resume<\/button>/);
+  assert.match(html, /id="touch-invert-y-setting"/);
   assert.match(html, /body\[data-touch-menu="true"\] \.phone-game-control \{ display: none; \}/);
   assert.match(app, /addEventListener\('hexenwailtouchmode'/);
   assert.match(html, /@media \(pointer: coarse\) and \(hover: none\) \{/);
@@ -201,8 +279,8 @@ test('the hamburger sends the engine menu command directly', () => {
   const body = app.match(/function togglePhoneMenuButton\(\) \{([\s\S]*?)\n\}/)?.[1];
   assert.ok(body, 'togglePhoneMenuButton is defined');
   assert.match(body, /releasePhoneInputs\(\);/);
-  assert.match(body, /engineKey\(PHONE_CONTROL_KEYCODES\.menu, true\);/);
-  assert.match(body, /engineKey\(PHONE_CONTROL_KEYCODES\.menu, false\);/);
+  assert.match(body, /engineKey\(HEXEN_TOUCH_KEYCODES\.menu, true\);/);
+  assert.match(body, /engineKey\(HEXEN_TOUCH_KEYCODES\.menu, false\);/);
 });
 
 test('touch taps on the hamburger and overlay buttons bypass viewport zoom suppression', () => {
