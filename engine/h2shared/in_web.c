@@ -214,6 +214,15 @@ EMSCRIPTEN_KEEPALIVE void Web_TouchControlsVisible (int visible)
 	touch_controls_override = visible ? true : false;
 }
 
+/* Write cvars and key bindings to config.cfg in the runtime filesystem
+ * without quitting. The launcher calls this on lifecycle paths that bypass
+ * the in-game Quit menu (return-to-launcher, page hide) so settings survive
+ * a tab close or PWA suspend that never runs Host_Shutdown. */
+EMSCRIPTEN_KEEPALIVE void Web_FlushConfig (void)
+{
+	Host_WriteConfiguration ("config.cfg");
+}
+
 static qboolean Web_GamepadEnabled (void)
 {
 	return in_gamepad.integer || touch_controls_override;

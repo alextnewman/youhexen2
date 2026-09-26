@@ -780,6 +780,16 @@ function callEngine(name, returnType, args = []) {
   }
 }
 
+/* Ask the running engine to write config.cfg into the runtime filesystem
+ * now, without quitting. Called on every lifecycle path that can bypass the
+ * in-game Quit menu (return-to-launcher, tab hide/close, PWA suspend) so key
+ * mappings and settings are not lost when Host_Shutdown never runs. Safe to
+ * call when the engine is not running: callEngine no-ops and the export must
+ * exist in EXPORTED_FUNCTIONS or the call fails silently at runtime. */
+function flushEngineConfig() {
+  callEngine('Web_FlushConfig', null, []);
+}
+
 function engineKey(key, down) {
   if (state.runtimeReady && !state.runtimeExited) {
     const ok = callEngine('Web_TouchKey', 'number', [['number', key], ['number', down ? 1 : 0]]);
@@ -911,6 +921,7 @@ async function returnToLauncher() {
   releasePhoneInputs();
   await exitNativeFullscreen();
   setStatus('Syncing saves before returning to the launcher…');
+  flushEngineConfig();
   await syncRuntimeToStorage();
   location.reload();
 }
@@ -1753,6 +1764,7 @@ async function init() {
   addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
       releasePhoneInputs();
+      flushEngineConfig();
       syncRuntimeToStorage().catch((error) => console.warn('Save sync failed', error));
     } else {
       checkForServiceWorkerUpdate();
@@ -1784,6 +1796,7 @@ async function init() {
   // and bfcache eviction; 'beforeunload' and 'freeze' are extra safety nets so
   // savegames written just before the runtime is suspended are not lost.
   addEventListener('pagehide', () => {
+    flushEngineConfig();
     syncRuntimeToStorage().catch((error) => console.warn('Save sync failed', error));
   });
   addEventListener('beforeunload', () => {

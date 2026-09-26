@@ -5973,6 +5973,7 @@ static void M_Quit_Key (int key)
 
 	case 'Y':
 	case 'y':
+	case K_ENTER:	/* gamepad A / touch A / mouse click arrive here as K_ENTER via the menu translation in M_Keydown */
 		Key_SetDest (key_console);
 		Host_Quit_f ();
 		break;

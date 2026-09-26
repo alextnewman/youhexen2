@@ -242,7 +242,7 @@ target_link_options(uhexen2_web PRIVATE
     -sFORCE_FILESYSTEM=1
     -sINVOKE_RUN=0
     -sNO_EXIT_RUNTIME=1
-    -sEXPORTED_FUNCTIONS=['_main','_Web_TouchKey','_Web_TouchLook','_Web_GyroLook','_Web_ResizeCanvas']
+    -sEXPORTED_FUNCTIONS=['_main','_Web_TouchKey','_Web_TouchLook','_Web_GyroLook','_Web_ResizeCanvas','_Web_FlushConfig']
     -sEXPORTED_RUNTIME_METHODS=['FS','callMain','ccall']
     --shell-file=${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html
 )
