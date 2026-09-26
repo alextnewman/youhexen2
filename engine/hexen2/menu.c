@@ -7262,6 +7262,13 @@ void M_Keydown (int key, qboolean repeat)
 		key = K_ENTER;
 	else if (key == K_GP_B)
 		key = K_ESCAPE;
+	/* Touch menu navigation: the overlay's Select/Back buttons are the
+	 * touch equivalents of gamepad A/B, so a touch-only player can
+	 * traverse menus (including the quit prompt) without a keyboard. */
+	else if (key == K_TOUCH_MENU_SELECT)
+		key = K_ENTER;
+	else if (key == K_TOUCH_MENU_BACK)
+		key = K_ESCAPE;
 	/* D-pad → arrows so menu nav works alongside the new K_GP_DPAD_*
 	 * keycodes that exist for in-game bindings. uhexen2-x552. */
 	else if (key == K_GP_DPAD_UP)
