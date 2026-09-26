@@ -209,14 +209,6 @@ EMSCRIPTEN_KEEPALIVE void Web_GyroLook (double dx, double dy)
 	gyro_look_y += dy;
 }
 
-/* Analog vector from the touch stick, -1..1 per axis, y positive = pull
- * toward the player. Set on change; the launcher zeroes it on release. */
-EMSCRIPTEN_KEEPALIVE void Web_TouchMove (double x, double y)
-{
-	touch_move.x = x;
-	touch_move.y = y;
-}
-
 EMSCRIPTEN_KEEPALIVE void Web_TouchControlsVisible (int visible)
 {
 	touch_controls_override = visible ? true : false;
@@ -305,6 +297,14 @@ static qboolean		gp_nav_down[GPNAV_COUNT];
 static double		gp_nav_repeat[GPNAV_COUNT];
 static gpstick_t	gp_move, gp_look;
 static gpstick_t	touch_move;	/* analog vector from the touch stick */
+
+/* Analog vector from the touch stick, -1..1 per axis, y positive = pull
+ * toward the player. Set on change; the launcher zeroes it on release. */
+EMSCRIPTEN_KEEPALIVE void Web_TouchMove (double x, double y)
+{
+	touch_move.x = x;
+	touch_move.y = y;
+}
 
 static qboolean Web_StrContainsNoCase (const char *haystack, const char *needle)
 {
