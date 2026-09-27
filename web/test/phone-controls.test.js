@@ -85,6 +85,33 @@ test('stick deadzone swallows the rest position and rescales the sweep', () => {
   assert.ok(Math.abs(moves[0][1] + expected) < 1e-9, `half deflection walks at ${expected}`);
 });
 
+test('stick thumb travel is proportional to the ring and reports deflection power', () => {
+  const root = makeElement(null);
+  const stick = makeElement('stick'); // 120px ring: radius 60, thumb travel 60 - 120 * 0.21
+  const controls = new PhoneControls(root, {
+    key() {},
+    look() {},
+    move() {},
+  }, { keys: KEYS, stickDeadZone: 0.18 });
+  controls.attach();
+
+  root.dispatch('pointerdown', pointer(stick, 1, 60, 60));
+  // Full deflection right: thumb must reach the ring edge, power at max.
+  root.dispatch('pointermove', pointer(stick, 1, 120, 60));
+  assert.equal(root.style.get('--stick-x'), '34.8px');
+  assert.equal(root.style.get('--stick-y'), '0px');
+  assert.equal(root.style.get('--stick-power'), '1');
+  // Half deflection: power rescales through the deadzone like the vector.
+  root.dispatch('pointermove', pointer(stick, 1, 60, 30));
+  assert.equal(root.style.get('--stick-y'), '-17.4px');
+  const expected = (0.5 - 0.18) / (1 - 0.18);
+  assert.ok(Math.abs(Number(root.style.get('--stick-power')) - expected) < 1e-9);
+  // Release parks the thumb and kills the glow.
+  root.dispatch('pointerup', pointer(stick, 1, 60, 30));
+  assert.equal(root.style.get('--stick-x'), '0px');
+  assert.equal(root.style.get('--stick-power'), '0');
+});
+
 test('multi-touch buttons and look region keep independent pointer ownership', () => {
   const root = makeElement(null);
   const attack = makeElement('attack');
@@ -265,8 +292,7 @@ test('phone mode DOM includes playing layout, touch visibility rules, and quit h
   assert.match(app, /gamepadconnected/);
   assert.match(app, /hexenwailquit/);
   assert.match(app, /Web_ResizeCanvas/);
-  assert.match(html, /\.phone-button\.prev \{[\s\S]*?width: 3rem;/);
-  assert.match(html, /\.phone-button\.next \{[\s\S]*?width: 3rem;/);
+  assert.match(html, /\.phone-button\.prev,[\s\S]*?\.phone-button\.next \{[\s\S]*?width: 3rem;/);
   assert.match(app, /const hadController = Boolean\(navigator\.serviceWorker\.controller\)/);
   assert.match(app, /addEventListener\('pageshow', checkForServiceWorkerUpdate\)/);
   assert.equal([...app.matchAll(/startEngineFromUserAction\(/g)].length, 2,

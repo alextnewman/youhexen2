@@ -182,6 +182,7 @@ export class PhoneControls {
       this.stickCenter = null;
       this.root?.style?.setProperty('--stick-x', '0px');
       this.root?.style?.setProperty('--stick-y', '0px');
+      this.root?.style?.setProperty('--stick-power', '0');
     } else if (owner.type === 'look') {
       this.lastLookPoint = null;
     } else if (owner.type === 'button' && owner.key) {
@@ -205,17 +206,24 @@ export class PhoneControls {
     const dead = this.options.stickDeadZone;
     let x = 0;
     let y = 0;
+    let power = 0;
     if (magnitude > dead) {
       const scaled = Math.min(1, (magnitude - dead) / (1 - dead));
       x = (rawX / magnitude) * scaled;
       y = (rawY / magnitude) * scaled;
+      power = scaled;
     }
     this.emitMove(x, y);
 
     /* The visual thumb follows the finger exactly; the emitted vector is
-     * the curved one. No lying. */
-    this.root?.style?.setProperty('--stick-x', `${rawX * 2}rem`);
-    this.root?.style?.setProperty('--stick-y', `${rawY * 2}rem`);
+     * the curved one. No lying. Travel is proportional to the measured
+     * ring so the thumb always reaches the edge at full deflection, and
+     * --stick-power (0..1) lets the host glow the thumb with deflection. */
+    const thumbTravel = Math.max(0, radius - (rect?.width || 96) * 0.21);
+    const round1 = (v) => Math.round(v * 10) / 10;
+    this.root?.style?.setProperty('--stick-x', `${round1(rawX * thumbTravel)}px`);
+    this.root?.style?.setProperty('--stick-y', `${round1(rawY * thumbTravel)}px`);
+    this.root?.style?.setProperty('--stick-power', `${power}`);
   }
 
   emitMove(x, y) {
@@ -247,5 +255,6 @@ export class PhoneControls {
     this.lastLookPoint = null;
     this.root?.style?.setProperty('--stick-x', '0px');
     this.root?.style?.setProperty('--stick-y', '0px');
+    this.root?.style?.setProperty('--stick-power', '0');
   }
 }
