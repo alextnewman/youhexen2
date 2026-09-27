@@ -270,13 +270,14 @@ test('phone mode DOM includes playing layout, touch visibility rules, and quit h
   assert.match(html, /data-phone-action="jump"[^>]*>Jump<\/button>/);
   assert.match(html, /data-phone-action="attack"[^>]*>Atk<\/button>/);
   assert.match(html, /data-phone-action="use"[^>]*>Use<\/button>/);
-  assert.match(html, /data-phone-action="prevWeapon"[^>]*>◀<\/button>/);
-  assert.match(html, /data-phone-action="nextWeapon"[^>]*>▶<\/button>/);
-  assert.match(html, /data-phone-action="menu"[^>]*>Menu<\/button>/);
-  assert.match(html, /data-phone-action="forward"[^>]*>▲<\/button>/);
-  assert.match(html, /data-phone-action="left"[^>]*>◀<\/button>/);
-  assert.match(html, /data-phone-action="right"[^>]*>▶<\/button>/);
-  assert.match(html, /data-phone-action="back"[^>]*>▼<\/button>/);
+  assert.match(html, /data-phone-action="prevWeapon"[^>]*>◀&#xFE0E;<\/button>/);
+  assert.match(html, /data-phone-action="nextWeapon"[^>]*>▶&#xFE0E;<\/button>/);
+  assert.doesNotMatch(html, /phone-game-control[^>]*data-phone-action="menu"/,
+    'the hamburger already sends the engine menu key; no second menu button');
+  assert.match(html, /data-phone-action="forward"[^>]*>▲&#xFE0E;<\/button>/);
+  assert.match(html, /data-phone-action="left"[^>]*>◀&#xFE0E;<\/button>/);
+  assert.match(html, /data-phone-action="right"[^>]*>▶&#xFE0E;<\/button>/);
+  assert.match(html, /data-phone-action="back"[^>]*>▼&#xFE0E;<\/button>/);
   assert.match(html, /data-phone-action="menuBack"[^>]*>Back<\/button>/);
   assert.match(html, /data-phone-action="menuSelect"[^>]*>Select<\/button>/);
   assert.match(html, /data-phone-action="menu"[^>]*>Resume<\/button>/);

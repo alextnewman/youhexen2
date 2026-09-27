@@ -343,53 +343,44 @@
       box-shadow: 0 0 26px rgba(255, 160, 60, 0.55), inset 0 1px 0 rgba(255, 230, 180, 0.25);
     }
     /* Primary action cluster, bottom inline-end corner. One anchor, one
-     * gap language: attack looms largest, jump and use flank it. */
+     * gap language: attack leads, jump and use flank it. Text labels
+     * stay compact so the buttons read as controls, not billboards. */
     .phone-button.attack,
     .phone-button.menu-back {
       inset-inline-end: var(--pad-e);
-      bottom: calc(var(--pad-b) + 5.25rem);
-      width: 5.5rem;
-      height: 5.5rem;
+      bottom: calc(var(--pad-b) + 4.75rem);
+      width: 5rem;
+      height: 5rem;
+      font-size: clamp(1.1rem, 1.8vw, 1.5rem);
     }
     .phone-button.jump,
     .phone-button.menu-select {
-      inset-inline-end: calc(var(--pad-e) + 5.5rem);
-      bottom: calc(var(--pad-b) + 0.75rem);
-      width: 4.5rem;
-      height: 4.5rem;
+      inset-inline-end: calc(var(--pad-e) + 5rem);
+      bottom: calc(var(--pad-b) + 0.5rem);
+      width: 4rem;
+      height: 4rem;
+      font-size: clamp(0.95rem, 1.5vw, 1.25rem);
     }
     .phone-button.use,
     .phone-button.menu-resume {
       inset-inline-end: var(--pad-e);
       bottom: var(--pad-b);
-      width: 4.5rem;
-      height: 4.5rem;
+      width: 4rem;
+      height: 4rem;
+      font-size: clamp(0.95rem, 1.5vw, 1.25rem);
     }
-    /* Weapon switch: a compact vertical pair riding the inline-end edge
-     * above the cluster, out of the thumb's way but inside its reach. */
+    /* Weapon switch: a horizontal pair riding just above the cluster. */
     .phone-button.prev,
     .phone-button.next {
-      inset-inline-end: var(--pad-e);
       width: 3rem;
       height: 3rem;
       min-width: 3rem;
       min-height: 3rem;
       font-size: 0.8rem;
+      bottom: calc(var(--pad-b) + 10.25rem);
     }
-    .phone-button.prev { bottom: calc(var(--pad-b) + 11.25rem); }
-    .phone-button.next { bottom: calc(var(--pad-b) + 14.5rem); }
-    /* Game-menu button: the pause corner, top inline-end under the ☰. */
-    .phone-button.back {
-      inset-inline-end: var(--pad-e);
-      top: calc(var(--pad-t) + 3.5rem);
-      width: 3.5rem;
-      height: 3.5rem;
-      min-width: 3.5rem;
-      min-height: 3.5rem;
-      font-size: 0.7rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
+    .phone-button.prev { inset-inline-end: calc(var(--pad-e) + 3.25rem); }
+    .phone-button.next { inset-inline-end: var(--pad-e); }
     /* Menu-mode d-pad: a diamond sitting where the stick lives. */
     .phone-button.menu-forward,
     .phone-button.menu-down,
@@ -644,16 +635,15 @@
       <div id="phone-controls" class="phone-controls" aria-label="Touch controls">
         <div class="phone-look phone-game-control" data-phone-action="look" aria-label="Drag to look"></div>
         <div class="phone-stick phone-game-control" data-phone-action="stick" aria-label="Move forward, back, left, and right"></div>
-        <button class="phone-button menu-forward phone-menu-control" type="button" data-phone-action="forward" aria-label="Move menu cursor up">▲</button>
-        <button class="phone-button menu-left phone-menu-control" type="button" data-phone-action="left" aria-label="Move menu cursor left">◀</button>
-        <button class="phone-button menu-right phone-menu-control" type="button" data-phone-action="right" aria-label="Move menu cursor right">▶</button>
-        <button class="phone-button menu-down phone-menu-control" type="button" data-phone-action="back" aria-label="Move menu cursor down">▼</button>
+        <button class="phone-button menu-forward phone-menu-control" type="button" data-phone-action="forward" aria-label="Move menu cursor up">▲&#xFE0E;</button>
+        <button class="phone-button menu-left phone-menu-control" type="button" data-phone-action="left" aria-label="Move menu cursor left">◀&#xFE0E;</button>
+        <button class="phone-button menu-right phone-menu-control" type="button" data-phone-action="right" aria-label="Move menu cursor right">▶&#xFE0E;</button>
+        <button class="phone-button menu-down phone-menu-control" type="button" data-phone-action="back" aria-label="Move menu cursor down">▼&#xFE0E;</button>
         <button class="phone-button attack phone-game-control" type="button" data-phone-action="attack" aria-label="Attack">Atk</button>
         <button class="phone-button jump phone-game-control" type="button" data-phone-action="jump" aria-label="Jump">Jump</button>
-        <button class="phone-button back phone-game-control" type="button" data-phone-action="menu" aria-label="Open menu">Menu</button>
         <button class="phone-button use phone-game-control" type="button" data-phone-action="use" aria-label="Use or interact">Use</button>
-        <button class="phone-button prev phone-game-control" type="button" data-phone-action="prevWeapon" aria-label="Previous weapon">◀</button>
-        <button class="phone-button next phone-game-control" type="button" data-phone-action="nextWeapon" aria-label="Next weapon">▶</button>
+        <button class="phone-button prev phone-game-control" type="button" data-phone-action="prevWeapon" aria-label="Previous weapon">◀&#xFE0E;</button>
+        <button class="phone-button next phone-game-control" type="button" data-phone-action="nextWeapon" aria-label="Next weapon">▶&#xFE0E;</button>
         <button class="phone-button menu-back phone-menu-control" type="button" data-phone-action="menuBack" aria-label="Go back one menu">Back</button>
         <button class="phone-button menu-select phone-menu-control" type="button" data-phone-action="menuSelect" aria-label="Select menu item">Select</button>
         <button class="phone-button menu-resume phone-menu-control" type="button" data-phone-action="menu" aria-label="Close menu and resume game">Resume</button>
