@@ -19,6 +19,11 @@
 
 export const DEFAULT_PHONE_CONTROL_OPTIONS = Object.freeze({
   stickDeadZone: 0.18,
+  /* Stick response curve: the deadzone-rescaled magnitude is raised to
+   * this power. 1 = linear; higher values stretch the walk zone so a
+   * casual thumb placement walks and only a deliberate shove to the
+   * edge punches it to full run. 1 = the old hyperspace toggle. */
+  stickResponse: 1.7,
   lookSensitivity: 1,
   /* Drag-look acceleration: slow drags stay ~1:1 for fine aim, fast
    * flicks get boosted for gross turns in one gesture. 0 = linear. */
@@ -235,16 +240,18 @@ export class PhoneControls {
     const rawX = clamp((point.x - center.x) / radius, -1, 1);
     const rawY = clamp((point.y - center.y) / radius, -1, 1);
 
-    /* Radial deadzone with rescale: inside the deadzone the thumb rests,
-     * outside it the magnitude sweeps walk→run continuously. The thumb
-     * itself is the speed control. */
+    /* Radial deadzone with rescale and a response curve: inside the
+     * deadzone the thumb rests; outside it the magnitude sweeps
+     * walk→run continuously, but the curve keeps the low end gentle so
+     * the walk zone is featherable. The thumb itself is the speed
+     * control — full edge is still full run when you punch it. */
     const magnitude = Math.hypot(rawX, rawY);
     const dead = this.options.stickDeadZone;
     let x = 0;
     let y = 0;
     let power = 0;
     if (magnitude > dead) {
-      const scaled = Math.min(1, (magnitude - dead) / (1 - dead));
+      const scaled = Math.pow(Math.min(1, (magnitude - dead) / (1 - dead)), this.options.stickResponse);
       x = (rawX / magnitude) * scaled;
       y = (rawY / magnitude) * scaled;
       power = scaled;

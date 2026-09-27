@@ -74,15 +74,50 @@ test('stick deadzone swallows the rest position and rescales the sweep', () => {
   root.dispatch('pointerdown', pointer(stick, 1, 60, 60));
   // 6px drift: magnitude 0.1, inside the deadzone — silence.
   root.dispatch('pointermove', pointer(stick, 1, 60, 54));
-  // Half deflection: magnitude 0.5 rescales to (0.5 - 0.18) / 0.82.
+  // Half deflection: magnitude 0.5 rescales to ((0.5 - 0.18) / 0.82) ^ stickResponse.
   root.dispatch('pointermove', pointer(stick, 1, 60, 30));
   root.dispatch('pointerup', pointer(stick, 1, 60, 30));
 
   assert.equal(moves.length, 2);
   assert.deepEqual(moves[1], [0, 0]);
-  const expected = (0.5 - 0.18) / (1 - 0.18);
+  const expected = Math.pow((0.5 - 0.18) / (1 - 0.18), 1.7);
   assert.ok(Math.abs(moves[0][0]) < 1e-9);
-  assert.ok(Math.abs(moves[0][1] + expected) < 1e-9, `half deflection walks at ${expected}`);
+  assert.ok(Math.abs(moves[0][1] + expected) < 1e-9, `half deflection walks gently at ${expected}`);
+});
+
+test('stick response 1 restores the old linear sweep', () => {
+  const root = makeElement(null);
+  const stick = makeElement('stick');
+  const moves = [];
+  const controls = new PhoneControls(root, {
+    key() {},
+    look() {},
+    move: (x, y) => moves.push([x, y]),
+  }, { keys: KEYS, stickDeadZone: 0.18, stickResponse: 1 });
+  controls.attach();
+
+  root.dispatch('pointerdown', pointer(stick, 1, 60, 60));
+  root.dispatch('pointermove', pointer(stick, 1, 60, 30));
+
+  const expected = (0.5 - 0.18) / (1 - 0.18);
+  assert.ok(Math.abs(moves[0][1] + expected) < 1e-9, `linear sweep at ${expected}`);
+});
+
+test('stick response curve still reaches full run at the edge', () => {
+  const root = makeElement(null);
+  const stick = makeElement('stick');
+  const moves = [];
+  const controls = new PhoneControls(root, {
+    key() {},
+    look() {},
+    move: (x, y) => moves.push([x, y]),
+  }, { keys: KEYS }); // default stickResponse 1.7
+  controls.attach();
+
+  root.dispatch('pointerdown', pointer(stick, 1, 60, 60));
+  root.dispatch('pointermove', pointer(stick, 1, 120, 60));
+
+  assert.deepEqual(moves, [[1, 0]], 'punching it to the edge is still full hyperspace');
 });
 
 test('stick thumb travel is proportional to the ring and reports deflection power', () => {
@@ -101,10 +136,10 @@ test('stick thumb travel is proportional to the ring and reports deflection powe
   assert.equal(root.style.get('--stick-x'), '34.8px');
   assert.equal(root.style.get('--stick-y'), '0px');
   assert.equal(root.style.get('--stick-power'), '1');
-  // Half deflection: power rescales through the deadzone like the vector.
+  // Half deflection: power follows the response curve like the vector.
   root.dispatch('pointermove', pointer(stick, 1, 60, 30));
   assert.equal(root.style.get('--stick-y'), '-17.4px');
-  const expected = (0.5 - 0.18) / (1 - 0.18);
+  const expected = Math.pow((0.5 - 0.18) / (1 - 0.18), 1.7);
   assert.ok(Math.abs(Number(root.style.get('--stick-power')) - expected) < 1e-9);
   // Release parks the thumb and kills the glow.
   root.dispatch('pointerup', pointer(stick, 1, 60, 30));
