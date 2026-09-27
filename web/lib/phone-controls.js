@@ -127,6 +127,11 @@ export class PhoneControls {
     this.options.lookAccel = Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_PHONE_CONTROL_OPTIONS.lookAccel;
   }
 
+  setStickResponse(value) {
+    const parsed = Number(value);
+    this.options.stickResponse = Number.isFinite(parsed) && parsed >= 1 ? parsed : DEFAULT_PHONE_CONTROL_OPTIONS.stickResponse;
+  }
+
   onPointerDown(event) {
     if (!this.enabled || !this.root) return;
     const action = actionForTarget(event.target);

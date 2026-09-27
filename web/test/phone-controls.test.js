@@ -378,6 +378,7 @@ test('phone mode DOM includes playing layout, touch visibility rules, and quit h
   assert.match(html, /data-phone-action="menu"[^>]*>Resume<\/button>/);
   assert.match(html, /id="touch-invert-y-setting"/);
   assert.match(html, /id="look-accel-setting"/);
+  assert.match(html, /id="stick-response-setting"/);
   assert.match(html, /body\[data-touch-menu="true"\] \.phone-game-control \{ display: none; \}/);
   assert.match(app, /addEventListener\('hexenwailtouchmode'/);
   assert.match(html, /@media \(pointer: coarse\) and \(hover: none\) \{/);

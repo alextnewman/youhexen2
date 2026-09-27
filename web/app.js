@@ -60,6 +60,9 @@ const state = {
     /* Drag-look acceleration: 0 = linear drag, higher = fast flicks turn
      * further. Slow drags stay ~1:1 for gyro-partnered fine aim. */
     lookAccel: 0.8,
+    /* Stick response curve exponent: 1 = linear (the old hyperspace
+     * toggle), higher = a gentler, more featherable walk zone. */
+    stickResponse: 1.7,
     gyroAim: false,
     gyroSensitivity: 1,
     gyroInvertY: false,
@@ -712,6 +715,8 @@ function loadPreferences() {
     if (Number.isFinite(sensitivity) && sensitivity >= 0.5 && sensitivity <= 2) state.preferences.lookSensitivity = sensitivity;
     const lookAccel = Number(saved.lookAccel);
     if (Number.isFinite(lookAccel) && lookAccel >= 0 && lookAccel <= 1.5) state.preferences.lookAccel = lookAccel;
+    const stickResponse = Number(saved.stickResponse);
+    if (Number.isFinite(stickResponse) && stickResponse >= 1 && stickResponse <= 2.5) state.preferences.stickResponse = stickResponse;
     state.preferences.gyroAim = Boolean(saved.gyroAim);
     const gyroSensitivity = Number(saved.gyroSensitivity);
     if (Number.isFinite(gyroSensitivity) && gyroSensitivity >= 0.25 && gyroSensitivity <= 2) state.preferences.gyroSensitivity = gyroSensitivity;
@@ -761,6 +766,7 @@ function applyPreferences() {
   if (ui.handednessSetting) ui.handednessSetting.value = state.preferences.handedness;
   if (ui.lookSensitivitySetting) ui.lookSensitivitySetting.value = String(state.preferences.lookSensitivity);
   if (ui.lookAccelSetting) ui.lookAccelSetting.value = String(state.preferences.lookAccel);
+  if (ui.stickResponseSetting) ui.stickResponseSetting.value = String(state.preferences.stickResponse);
   if (ui.gyroAimSetting) ui.gyroAimSetting.value = state.preferences.gyroAim ? 'on' : 'off';
   if (ui.gyroSensitivitySetting) ui.gyroSensitivitySetting.value = String(state.preferences.gyroSensitivity);
   if (ui.gyroInvertYSetting) ui.gyroInvertYSetting.checked = state.preferences.gyroInvertY;
@@ -775,6 +781,7 @@ function applyPreferences() {
   }
   state.phoneControls?.setLookSensitivity(state.preferences.lookSensitivity);
   state.phoneControls?.setLookAccel(state.preferences.lookAccel);
+  state.phoneControls?.setStickResponse(state.preferences.stickResponse);
   state.gyroAim?.setSensitivity(state.preferences.gyroSensitivity);
   state.gyroAim?.setInvertY(state.preferences.gyroInvertY);
   state.gyroAim?.setEnabled(state.preferences.gyroAim);
@@ -1453,6 +1460,7 @@ function bindUi() {
     handednessSetting: document.getElementById('handedness-setting'),
     lookSensitivitySetting: document.getElementById('look-sensitivity-setting'),
     lookAccelSetting: document.getElementById('look-accel-setting'),
+    stickResponseSetting: document.getElementById('stick-response-setting'),
     gyroAimSetting: document.getElementById('gyro-aim-setting'),
     gyroSensitivitySetting: document.getElementById('gyro-sensitivity-setting'),
     gyroInvertYSetting: document.getElementById('gyro-invert-y-setting'),
@@ -1482,7 +1490,7 @@ function bindUi() {
      * is the touch-drag path only, so the mouse path is unaffected. */
     look: (dx, dy) => engineLook(dx, state.preferences.touchInvertY ? -dy : dy),
     move: engineMove,
-  }, { lookSensitivity: state.preferences.lookSensitivity, lookAccel: state.preferences.lookAccel, keys: HEXEN_TOUCH_KEYCODES });
+  }, { lookSensitivity: state.preferences.lookSensitivity, lookAccel: state.preferences.lookAccel, stickResponse: state.preferences.stickResponse, keys: HEXEN_TOUCH_KEYCODES });
   state.phoneControls.attach();
   state.gyroAim = new GyroAim({
     look: engineGyroLook,
@@ -1572,6 +1580,11 @@ function bindUi() {
   });
   ui.lookAccelSetting?.addEventListener('input', () => {
     state.preferences.lookAccel = Number(ui.lookAccelSetting.value);
+    savePreferences();
+    applyPreferences();
+  });
+  ui.stickResponseSetting?.addEventListener('input', () => {
+    state.preferences.stickResponse = Number(ui.stickResponseSetting.value);
     savePreferences();
     applyPreferences();
   });
