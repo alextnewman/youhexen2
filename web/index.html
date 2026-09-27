@@ -345,13 +345,20 @@
     /* Primary action cluster, bottom inline-end corner. One anchor, one
      * gap language: attack leads, jump and use flank it. Text labels
      * stay compact so the buttons read as controls, not billboards. */
-    .phone-button.attack,
-    .phone-button.menu-back {
+    .phone-button.attack {
       inset-inline-end: var(--pad-e);
       bottom: calc(var(--pad-b) + 4.75rem);
       width: 5rem;
       height: 5rem;
       font-size: clamp(1.1rem, 1.8vw, 1.5rem);
+    }
+    /* Menu-mode trio: three matched buttons in the cluster slots. */
+    .phone-button.menu-back {
+      inset-inline-end: var(--pad-e);
+      bottom: calc(var(--pad-b) + 4.75rem);
+      width: 4rem;
+      height: 4rem;
+      font-size: clamp(0.95rem, 1.5vw, 1.25rem);
     }
     .phone-button.jump,
     .phone-button.menu-select {
@@ -595,6 +602,9 @@
           </label>
           <label class="setting">Look sensitivity
             <input id="look-sensitivity-setting" type="range" min="0.5" max="2" step="0.1" value="1">
+          </label>
+          <label class="setting">Look acceleration
+            <input id="look-accel-setting" type="range" min="0" max="1.5" step="0.1" value="0.8">
           </label>
           <label class="setting">Gyro aim
             <select id="gyro-aim-setting">

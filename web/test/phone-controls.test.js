@@ -149,6 +149,66 @@ test('fast flicks survive the look clamp instead of being truncated', () => {
   assert.deepEqual(looks, [[200, 0]], 'a 200px flick must not be cut down to the old 48px ceiling');
 });
 
+function tpointer(target, pointerId, x, y, timeStamp) {
+  return { ...pointer(target, pointerId, x, y), timeStamp };
+}
+
+test('look acceleration boosts fast flicks over slow drags', () => {
+  const root = makeElement(null);
+  const look = makeElement('look');
+  const looks = [];
+  const controls = new PhoneControls(root, {
+    key() {},
+    look: (dx, dy) => looks.push([dx, dy]),
+  }, { lookSensitivity: 1, lookAccel: 1, lookAccelPower: 1 });
+  controls.attach();
+
+  root.dispatch('pointerdown', tpointer(look, 1, 0, 0, 1000));
+  // Slow: 10px over 100ms. First move of a drag is always linear.
+  root.dispatch('pointermove', tpointer(look, 1, 10, 0, 1100));
+  // Fast: same 10px over 10ms. Gain rides the smoothed speed, so it lands boosted.
+  root.dispatch('pointermove', tpointer(look, 1, 20, 0, 1110));
+  root.dispatch('pointerup', tpointer(look, 1, 20, 0, 1120));
+
+  assert.equal(looks.length, 2);
+  assert.deepEqual(looks[0], [10, 0], 'touchdown never punches the camera');
+  assert.ok(looks[1][0] > looks[0][0], `fast flick ${looks[1][0]} beats slow drag ${looks[0][0]}`);
+  assert.equal(looks[1][1], 0);
+});
+
+test('look acceleration at zero is plain linear drag', () => {
+  const root = makeElement(null);
+  const look = makeElement('look');
+  const looks = [];
+  const controls = new PhoneControls(root, {
+    key() {},
+    look: (dx, dy) => looks.push([dx, dy]),
+  }, { lookSensitivity: 1, lookAccel: 0 });
+  controls.attach();
+
+  root.dispatch('pointerdown', tpointer(look, 1, 0, 0, 1000));
+  root.dispatch('pointermove', tpointer(look, 1, 10, 0, 1001));
+  root.dispatch('pointermove', tpointer(look, 1, 20, 0, 1002));
+
+  assert.deepEqual(looks, [[10, 0], [10, 0]]);
+});
+
+test('look without event timestamps stays linear', () => {
+  const root = makeElement(null);
+  const look = makeElement('look');
+  const looks = [];
+  const controls = new PhoneControls(root, {
+    key() {},
+    look: (dx, dy) => looks.push([dx, dy]),
+  }, { lookSensitivity: 2 }); // default accel on, but no timeStamp on these events
+  controls.attach();
+
+  root.dispatch('pointerdown', pointer(look, 1, 0, 0));
+  root.dispatch('pointermove', pointer(look, 1, 30, 0));
+
+  assert.deepEqual(looks, [[60, 0]]);
+});
+
 test('button presses buzz when haptics are available', () => {
   const vibrated = [];
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
@@ -282,6 +342,7 @@ test('phone mode DOM includes playing layout, touch visibility rules, and quit h
   assert.match(html, /data-phone-action="menuSelect"[^>]*>Select<\/button>/);
   assert.match(html, /data-phone-action="menu"[^>]*>Resume<\/button>/);
   assert.match(html, /id="touch-invert-y-setting"/);
+  assert.match(html, /id="look-accel-setting"/);
   assert.match(html, /body\[data-touch-menu="true"\] \.phone-game-control \{ display: none; \}/);
   assert.match(app, /addEventListener\('hexenwailtouchmode'/);
   assert.match(html, /@media \(pointer: coarse\) and \(hover: none\) \{/);

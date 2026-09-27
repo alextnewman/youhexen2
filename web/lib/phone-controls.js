@@ -20,6 +20,10 @@
 export const DEFAULT_PHONE_CONTROL_OPTIONS = Object.freeze({
   stickDeadZone: 0.18,
   lookSensitivity: 1,
+  /* Drag-look acceleration: slow drags stay ~1:1 for fine aim, fast
+   * flicks get boosted for gross turns in one gesture. 0 = linear. */
+  lookAccel: 0.8,
+  lookAccelPower: 1.3,
   maxLookDelta: 512,
   haptics: true,
   hapticDurationMs: 8,
@@ -74,6 +78,8 @@ export class PhoneControls {
     this.heldKeys = new Set();
     this.stickCenter = null;
     this.lastLookPoint = null;
+    this.lastLookTime = null;
+    this.lookSpeed = null;
     this.moveVector = { x: 0, y: 0 };
 
     this.bound = {
@@ -111,6 +117,11 @@ export class PhoneControls {
     this.options.lookSensitivity = Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_PHONE_CONTROL_OPTIONS.lookSensitivity;
   }
 
+  setLookAccel(value) {
+    const parsed = Number(value);
+    this.options.lookAccel = Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_PHONE_CONTROL_OPTIONS.lookAccel;
+  }
+
   onPointerDown(event) {
     if (!this.enabled || !this.root) return;
     const action = actionForTarget(event.target);
@@ -131,6 +142,8 @@ export class PhoneControls {
     if (action === 'look') {
       this.pointerOwners.set(event.pointerId, { type: 'look', action });
       this.lastLookPoint = eventPoint(event);
+      this.lastLookTime = typeof event.timeStamp === 'number' ? event.timeStamp : null;
+      this.lookSpeed = 0;
       return;
     }
 
@@ -157,12 +170,33 @@ export class PhoneControls {
     if (owner.type === 'look') {
       const point = eventPoint(event);
       if (this.lastLookPoint) {
-        /* Linear 1:1 drag. The clamp is a garbage-event guard, not a
-         * speed limit: fast flicks must survive, or turning feels like
-         * dragging through mud. */
+        /* The clamp is a garbage-event guard, not a speed limit: fast
+         * flicks must survive, or turning feels like dragging through
+         * mud. On top of it sits a velocity-adaptive gain: slow drags
+         * stay ~1:1 so they aim precisely (the gyro's partner for fine
+         * work), while fast flicks get boosted for gross turns in a
+         * single gesture. lookAccel 0 restores linear drag. */
         const scale = this.options.lookSensitivity;
-        const dx = clamp(point.x - this.lastLookPoint.x, -this.options.maxLookDelta, this.options.maxLookDelta) * scale;
-        const dy = clamp(point.y - this.lastLookPoint.y, -this.options.maxLookDelta, this.options.maxLookDelta) * scale;
+        let dx = clamp(point.x - this.lastLookPoint.x, -this.options.maxLookDelta, this.options.maxLookDelta);
+        let dy = clamp(point.y - this.lastLookPoint.y, -this.options.maxLookDelta, this.options.maxLookDelta);
+        const accel = this.options.lookAccel;
+        if (accel > 0 && typeof event.timeStamp === 'number') {
+          const last = typeof this.lastLookTime === 'number' ? this.lastLookTime : event.timeStamp;
+          const dt = Math.max(1, event.timeStamp - last);
+          /* Gain rides the *previous* smoothed speed, then the EMA
+           * absorbs this event's raw (pre-gain) speed: the first move
+           * of a drag is always linear, so touchdown never punches the
+           * camera, and the boost never feeds back into itself. */
+          const speed = this.lookSpeed ?? 0;
+          const gain = 1 + accel * Math.pow(speed, this.options.lookAccelPower);
+          const instant = Math.hypot(dx, dy) / dt;
+          this.lookSpeed = speed + (instant - speed) * 0.35;
+          dx *= gain;
+          dy *= gain;
+          this.lastLookTime = event.timeStamp;
+        }
+        dx *= scale;
+        dy *= scale;
         if (dx || dy) this.bridge.look(dx, dy);
       }
       this.lastLookPoint = point;
@@ -185,6 +219,8 @@ export class PhoneControls {
       this.root?.style?.setProperty('--stick-power', '0');
     } else if (owner.type === 'look') {
       this.lastLookPoint = null;
+      this.lastLookTime = null;
+      this.lookSpeed = null;
     } else if (owner.type === 'button' && owner.key) {
       this.releaseKey(owner.key);
     }
@@ -253,6 +289,8 @@ export class PhoneControls {
     }
     this.stickCenter = null;
     this.lastLookPoint = null;
+    this.lastLookTime = null;
+    this.lookSpeed = null;
     this.root?.style?.setProperty('--stick-x', '0px');
     this.root?.style?.setProperty('--stick-y', '0px');
     this.root?.style?.setProperty('--stick-power', '0');
