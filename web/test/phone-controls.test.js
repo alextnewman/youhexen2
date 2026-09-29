@@ -8,12 +8,29 @@ import { HEXEN_TOUCH_KEYCODES } from '../lib/hexen-touch-keymap.js';
 
 const KEYS = HEXEN_TOUCH_KEYCODES;
 
-function makeElement(action, rect = { left: 0, top: 0, width: 120, height: 120 }) {
+function makeElement(action, rect = { left: 0, top: 0, width: 120, height: 120 }, children = {}) {
   const listeners = new Map();
   const style = new Map();
+  const classes = new Set();
   return {
     dataset: action ? { phoneAction: action } : {},
-    style: { setProperty: (name, value) => style.set(name, value), get: (name) => style.get(name) },
+    style: {
+      setProperty: (name, value) => style.set(name, value),
+      get: (name) => style.get(name),
+      transform: '',
+    },
+    classList: {
+      add: (...names) => names.forEach((n) => classes.add(n)),
+      remove: (...names) => names.forEach((n) => classes.delete(n)),
+      toggle: (name, force) => {
+        if (force === undefined) {
+          if (classes.has(name)) classes.delete(name); else classes.add(name);
+        } else if (force) classes.add(name); else classes.delete(name);
+      },
+      contains: (name) => classes.has(name),
+    },
+    querySelector: (selector) => children[selector] ?? null,
+    querySelectorAll: () => [],
     closest(selector) {
       return selector.includes(this.dataset.phoneAction) || selector === '[data-phone-action]' ? this : null;
     },
@@ -769,4 +786,118 @@ test('releaseAll stands every latch back up and clears pending grace', () => {
   controls.releaseAll();
   assert.deepEqual(keys, [[KEYS.crouch, true], [KEYS.crouch, false]]);
   assert.ok(!crouch.hasClass('latched'));
+});
+
+test('button press wakes the glass and dips; release puts it back to sleep', () => {
+  const root = makeElement(null);
+  const attack = makeElement('attack');
+  const keyEvents = [];
+  const controls = new PhoneControls(root, {
+    key: (key, down) => keyEvents.push([key, down]),
+    look() {},
+    move() {},
+  }, { keys: KEYS });
+  controls.attach();
+
+  root.dispatch('pointerdown', pointer(attack, 1, 60, 60));
+  assert.ok(attack.classList.contains('lit'), 'gem wakes while touched');
+  assert.ok(attack.classList.contains('dip'), 'gem dips under the finger');
+  assert.deepEqual(keyEvents, [[KEYS.attack, true]]);
+
+  root.dispatch('pointerup', pointer(attack, 1, 60, 60));
+  assert.ok(!attack.classList.contains('lit'), 'gem sleeps on release');
+  assert.ok(!attack.classList.contains('dip'), 'dip lifts on release');
+  assert.deepEqual(keyEvents, [[KEYS.attack, true], [KEYS.attack, false]]);
+});
+
+test('stick wakes the cross and lights the arm in the push direction', () => {
+  const armN = makeElement(null);
+  const armS = makeElement(null);
+  const armE = makeElement(null);
+  const armW = makeElement(null);
+  const root = makeElement(null);
+  const stick = makeElement('stick', { left: 0, top: 0, width: 120, height: 120 }, {
+    '.stick-arm.n': armN,
+    '.stick-arm.s': armS,
+    '.stick-arm.e': armE,
+    '.stick-arm.w': armW,
+  });
+  const controls = new PhoneControls(root, {
+    key() {},
+    look() {},
+    move() {},
+  }, { keys: KEYS });
+  controls.attach();
+
+  root.dispatch('pointerdown', pointer(stick, 1, 60, 60));
+  assert.ok(stick.classList.contains('lit'), 'cross wakes on touch');
+  assert.ok(!armN.classList.contains('lit'), 'no arm lit at rest');
+
+  // Push north: the north arm lights, the others stay dark.
+  root.dispatch('pointermove', pointer(stick, 1, 60, 0));
+  assert.ok(armN.classList.contains('lit'), 'north arm lights on a north push');
+  assert.ok(!armS.classList.contains('lit') && !armE.classList.contains('lit') && !armW.classList.contains('lit'));
+
+  // Swing east: the light follows.
+  root.dispatch('pointermove', pointer(stick, 1, 120, 60));
+  assert.ok(armE.classList.contains('lit'), 'east arm lights on an east push');
+  assert.ok(!armN.classList.contains('lit'), 'north arm goes dark');
+
+  root.dispatch('pointerup', pointer(stick, 1, 120, 60));
+  assert.ok(!stick.classList.contains('lit'), 'cross sleeps on release');
+  assert.ok(!armE.classList.contains('lit'), 'arms go dark on release');
+});
+
+test('look grows a breathing glow that drifts with the thumb and dies on release', () => {
+  const thumbPos = makeElement(null);
+  const breath = makeElement(null, { left: 0, top: 0, width: 800, height: 400 }, {
+    '.breath-thumb-pos': thumbPos,
+  });
+  const root = makeElement(null, { left: 0, top: 0, width: 800, height: 400 }, {
+    '[data-phone-breath]': breath,
+  });
+  const look = makeElement('look', { left: 0, top: 0, width: 800, height: 400 });
+  const controls = new PhoneControls(root, {
+    key() {},
+    look() {},
+    move() {},
+  }, { keys: KEYS });
+  controls.attach();
+
+  root.dispatch('pointerdown', pointer(look, 1, 400, 200));
+  assert.ok(look.classList.contains('lit'), 'look layer wakes');
+  assert.ok(breath.classList.contains('on'), 'breath appears where the thumb lands');
+  assert.equal(breath.style.transform, 'translate(400.0px, 200.0px)');
+
+  // A fast drag: the thumb-glow drifts with the finger and the ambient
+  // light answers the speed.
+  const down = pointer(look, 1, 400, 200);
+  down.timeStamp = 1000;
+  const drag = pointer(look, 1, 500, 260);
+  drag.timeStamp = 1016;
+  root.dispatch('pointermove', drag);
+  assert.equal(thumbPos.style.transform, 'translate(80.0px, 60.0px)');
+  const b = Number(breath.style.get('--b'));
+  assert.ok(b > 0 && b <= 1, 'ambient light answers the speed');
+
+  root.dispatch('pointerup', pointer(look, 1, 500, 260));
+  assert.ok(!look.classList.contains('lit'), 'look layer sleeps');
+  assert.ok(!breath.classList.contains('on'), 'breath fades on release');
+});
+
+test('releaseAll puts every woken control back to sleep', () => {
+  const root = makeElement(null);
+  const attack = makeElement('attack');
+  const controls = new PhoneControls(root, {
+    key() {},
+    look() {},
+    move() {},
+  }, { keys: KEYS });
+  controls.attach();
+
+  root.dispatch('pointerdown', pointer(attack, 1, 60, 60));
+  assert.ok(attack.classList.contains('lit'));
+  controls.releaseAll();
+  assert.ok(!attack.classList.contains('lit'), 'lit cleared');
+  assert.ok(!attack.classList.contains('dip'), 'dip cleared');
 });

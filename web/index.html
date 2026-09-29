@@ -332,24 +332,51 @@
       pointer-events: none;
     }
     body[data-engine-state="running"] .canvas-hint { display: none; }
+    /* The menu control: a high-concept burger. Three strata of light —
+     * cut facets, not a glyph — rest inside the etched glass, and part
+     * like sediment when the thumb lands. Classic top-right positioning;
+     * the pane's own glass for style. */
     .phone-top-button {
       position: absolute;
       top: max(0.75rem, var(--safe-top));
       right: max(0.75rem, var(--safe-right));
       z-index: 8;
-      min-width: 2.75rem;
-      min-height: 2.75rem;
-      padding: 0.65rem 0.8rem;
-      background: rgba(0, 0, 0, 0.58);
-      border-color: rgba(255, 255, 255, 0.24);
-      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
-      display: none;
+      padding: 0;
+      opacity: 0.8;
     }
-    body[data-engine-state="running"][data-immersive="true"] .phone-top-button { display: block; }
+    /* The gem's own display:grid must not defeat the launcher/gameplay
+     * visibility switch, so these ride the ID. */
+    #phone-menu-button { display: none; }
+    body[data-engine-state="running"][data-immersive="true"] #phone-menu-button { display: grid; }
+    .burger-strata {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.34rem;
+      width: 1.25rem;
+      pointer-events: none;
+    }
+    .stratum {
+      height: 2px;
+      width: 100%;
+      border-radius: 2px;
+      background: linear-gradient(90deg, transparent,
+        rgba(226, 240, 255, 0.95) 30%, rgba(226, 240, 255, 0.95) 70%, transparent);
+      box-shadow: 0 0 7px rgba(170, 205, 250, 0.55);
+      transition: transform 0.28s ease-out, box-shadow 0.28s;
+    }
+    /* The middle stratum runs short: cut facets, not ruled lines. */
+    .stratum:nth-child(2) { width: 68%; }
+    .phone-top-button:is(:active, .lit) .stratum {
+      box-shadow: 0 0 12px rgba(190, 222, 255, 0.85);
+    }
+    .phone-top-button:is(:active, .lit) .stratum:nth-child(1) { transform: translateY(-3px); }
+    .phone-top-button:is(:active, .lit) .stratum:nth-child(3) { transform: translateY(3px); }
     /* A controller is its own menu button: in_web.c binds Start to the engine
      * menu, so the launcher's ☰ would just be engine chrome painted over the
      * game. Hide it while a gamepad is connected. */
-    body[data-gamepad="true"] .phone-top-button { display: none; }
+    body[data-gamepad="true"] #phone-menu-button { display: none; }
     .phone-controls {
       --stick-x: 0px;
       --stick-y: 0px;
@@ -391,9 +418,9 @@
     body[data-touch-menu="true"] .phone-game-control { display: none; }
     body[data-touch-menu="true"] .phone-menu-control.phone-button { display: grid; }
     /* The mystical cross, small and pressed into the bottom-inline-start
-     * corner. The arms are etched and still; the thumb is the trace that
-     * follows the finger and kindles with deflection. Inner visuals never
-     * take the hit test, so the zone's center math stays honest. */
+     * corner. It rests dim and wakes where touched; the arm in the push
+     * direction lights, and the trace follows the finger. Inner visuals
+     * never take the hit test, so the zone's center math stays honest. */
     .phone-stick {
       position: absolute;
       inset-inline-start: var(--pad-s);
@@ -401,19 +428,34 @@
       width: 8.5rem;
       height: 8.5rem;
       opacity: 0.55;
+      transition: opacity 0.45s;
     }
+    .phone-stick.lit { opacity: 1; }
     .phone-stick > * { pointer-events: none; }
     .stick-arm {
       position: absolute;
-      border-radius: 999px;
-      background: linear-gradient(160deg, rgba(170, 195, 235, 0.22), rgba(170, 195, 235, 0.07));
-      border: 1px solid rgba(170, 200, 240, 0.25);
-      box-shadow: inset 0 1px 0 rgba(220, 235, 255, 0.14);
+      background:
+        linear-gradient(135deg, rgba(228, 244, 255, 0.26) 0%, rgba(228, 244, 255, 0.04) 35%,
+          rgba(120, 160, 205, 0.08) 60%, rgba(198, 226, 255, 0.20) 100%),
+        rgba(150, 190, 235, 0.16);
+      border: 1px solid rgba(190, 220, 250, 0.55);
+      box-shadow: 0 0 14px rgba(150, 190, 240, 0.16),
+        inset 0 2px 5px rgba(232, 246, 255, 0.26),
+        inset 0 -3px 8px rgba(12, 32, 62, 0.38);
+      transition: background 0.18s, box-shadow 0.18s;
     }
-    .stick-arm.n { left: 50%; top: 4%; transform: translateX(-50%); width: 1.9rem; height: 3.1rem; }
-    .stick-arm.s { left: 50%; bottom: 4%; transform: translateX(-50%); width: 1.9rem; height: 3.1rem; }
-    .stick-arm.w { left: 4%; top: 50%; transform: translateY(-50%); width: 3.1rem; height: 1.9rem; }
-    .stick-arm.e { right: 4%; top: 50%; transform: translateY(-50%); width: 3.1rem; height: 1.9rem; }
+    .stick-arm.n { left: 50%; top: 4%; transform: translateX(-50%); width: 1.9rem; height: 3.1rem;
+      clip-path: polygon(22% 0, 78% 0, 100% 100%, 0 100%); }
+    .stick-arm.s { left: 50%; bottom: 4%; transform: translateX(-50%); width: 1.9rem; height: 3.1rem;
+      clip-path: polygon(0 0, 100% 0, 78% 100%, 22% 100%); }
+    .stick-arm.w { left: 4%; top: 50%; transform: translateY(-50%); width: 3.1rem; height: 1.9rem;
+      clip-path: polygon(0 22%, 100% 0, 100% 100%, 0 78%); }
+    .stick-arm.e { right: 4%; top: 50%; transform: translateY(-50%); width: 3.1rem; height: 1.9rem;
+      clip-path: polygon(0 0, 100% 22%, 100% 78%, 0 100%); }
+    .stick-arm.lit {
+      background: rgba(150, 190, 235, 0.38);
+      box-shadow: 0 0 26px rgba(150, 200, 255, 0.6);
+    }
     .stick-heart {
       position: absolute;
       left: 50%;
@@ -423,7 +465,12 @@
       height: 2rem;
       border-radius: 50%;
       background: radial-gradient(circle at 50% 40%, rgba(200, 220, 250, 0.35), rgba(200, 220, 250, 0.06));
-      border: 1px solid rgba(170, 200, 240, 0.3);
+      border: 1px solid rgba(170, 200, 230, 0.5);
+      transition: background 0.18s, box-shadow 0.18s;
+    }
+    .stick-heart.lit {
+      background: rgba(150, 190, 235, 0.42);
+      box-shadow: 0 0 26px rgba(150, 200, 255, 0.6);
     }
     .phone-stick::after {
       content: "";
@@ -443,10 +490,85 @@
     /* The look layer is the whole screen behind the controls: every drag
      * that is not on a gem, the cross, or the strip turns the camera, and
      * a quick tap fires. No dead bands between controls. Later siblings
-     * win the hit test. */
+     * win the hit test. The layer wakes faintly where touched, and grows
+     * a slow-breathing glow where the thumb lands — the glow drifts with
+     * the finger while the ambient light answers its speed. */
     .phone-look {
       position: absolute;
       inset: 0;
+      transition: background 0.25s;
+    }
+    .phone-look.lit { background: rgba(140, 170, 210, 0.08); }
+    .phone-breath {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 10rem;
+      height: 10rem;
+      margin: -5rem 0 0 -5rem;
+      opacity: 0;
+      transition: opacity 0.5s;
+      pointer-events: none;
+      --b: 0;
+    }
+    .phone-breath.on { opacity: 1; transition: opacity 0.18s; }
+    .breath-ring {
+      position: absolute;
+      inset: 1rem;
+      border-radius: 50%;
+      border: 1px solid rgba(170, 200, 230, 0.4);
+      box-shadow: inset 0 0 18px rgba(150, 190, 235, 0.12);
+    }
+    .breath-ring2 {
+      position: absolute;
+      inset: 2.6rem;
+      border-radius: 50%;
+      border: 1px solid rgba(170, 200, 230, 0.18);
+    }
+    .breath-dimple {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(170, 200, 230, 0.35);
+    }
+    .breath-glow {
+      position: absolute;
+      inset: -2rem;
+      border-radius: 50%;
+      background: radial-gradient(closest-side,
+        rgba(150, 200, 255, 0.22), rgba(150, 200, 255, 0.06) 55%, transparent 75%);
+      opacity: var(--b, 0);
+      animation: breathGlow 3.6s ease-in-out infinite;
+    }
+    @keyframes breathGlow {
+      0%, 100% { opacity: calc(var(--b, 0) * 0.7); }
+      50% { opacity: var(--b, 0); }
+    }
+    .breath-thumb-pos {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 0;
+      height: 0;
+    }
+    .breath-thumb {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 5rem;
+      height: 5rem;
+      border-radius: 50%;
+      background: radial-gradient(closest-side,
+        rgba(205, 228, 252, 0.30), rgba(180, 210, 245, 0.10) 48%, transparent 72%);
+      animation: breathThumb 3.6s ease-in-out infinite;
+    }
+    @keyframes breathThumb {
+      0%, 100% { transform: translate(-50%, -50%) scale(1.05); opacity: 0.42; }
+      50% { transform: translate(-50%, -50%) scale(1.27); opacity: 0.64; }
     }
     /* The artifact strip: an invisible band along the bottom edge.
      * Sideways swipes scroll the inventory with detents; the game's own
@@ -458,8 +580,10 @@
       bottom: 0;
       height: 3rem;
     }
-    /* Pressable gems: etched glass, runes only. Cut bright upper-left,
-     * deep bevel below; each rune carries its own moonlight. */
+    /* Pressable gems: etched glass, runes only. They rest dim and wake
+     * where touched: the lit state is full opacity, brighter glass, a
+     * bloomed halo. Cut bright upper-left, deep bevel below; each rune
+     * carries its own moonlight. */
     .phone-gem {
       position: absolute;
       direction: ltr;
@@ -475,28 +599,39 @@
       line-height: 1;
       text-shadow: 0 0 10px rgba(190, 222, 255, 0.55);
       background:
-        linear-gradient(135deg, rgba(228, 244, 255, 0.20) 0%, rgba(228, 244, 255, 0.04) 30%,
-          rgba(120, 160, 205, 0.08) 58%, rgba(198, 226, 255, 0.16) 100%),
-        rgba(130, 170, 215, 0.10);
-      border: 1px solid rgba(190, 220, 250, 0.38);
-      outline: 1px solid rgba(170, 200, 230, 0.18);
-      outline-offset: -5px;
-      box-shadow: 0 0 16px rgba(150, 190, 240, 0.14),
-        inset 0 2px 6px rgba(232, 246, 255, 0.22),
-        inset 0 -4px 10px rgba(12, 32, 62, 0.35);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-      transition: transform 0.07s ease-out, box-shadow 0.12s ease-out, background 0.12s ease-out;
+        linear-gradient(135deg, rgba(228, 244, 255, 0.30) 0%, rgba(228, 244, 255, 0.05) 30%,
+          rgba(120, 160, 205, 0.10) 58%, rgba(198, 226, 255, 0.24) 100%),
+        rgba(130, 170, 215, 0.14);
+      border: 1px solid rgba(190, 220, 250, 0.55);
+      outline: 1px solid rgba(170, 200, 230, 0.28);
+      outline-offset: -6px;
+      box-shadow: 0 0 18px rgba(150, 190, 240, 0.20),
+        inset 0 2px 6px rgba(232, 246, 255, 0.30),
+        inset 0 -4px 10px rgba(12, 32, 62, 0.42),
+        inset 2px 0 6px rgba(200, 228, 255, 0.10),
+        inset -2px 0 6px rgba(12, 32, 62, 0.20);
+      backdrop-filter: blur(6px) brightness(1.2);
+      -webkit-backdrop-filter: blur(6px) brightness(1.2);
+      opacity: 0.55;
+      transition: opacity 0.45s, box-shadow 0.25s, background 0.25s, transform 0.12s, scale 0.09s ease-out;
     }
-    .phone-gem:active {
-      transform: scale(0.93);
+    .phone-gem.lit,
+    .phone-button.lit {
+      opacity: 1;
       background:
-        linear-gradient(135deg, rgba(228, 244, 255, 0.32) 0%, rgba(228, 244, 255, 0.08) 30%,
-          rgba(150, 190, 235, 0.14) 60%, rgba(198, 226, 255, 0.24) 100%);
-      box-shadow: 0 0 28px rgba(150, 200, 255, 0.4),
-        inset 0 2px 8px rgba(232, 246, 255, 0.3),
-        inset 0 0 14px rgba(200, 230, 255, 0.2);
+        linear-gradient(135deg, rgba(228, 244, 255, 0.40) 0%, rgba(228, 244, 255, 0.10) 30%,
+          rgba(150, 190, 235, 0.18) 60%, rgba(198, 226, 255, 0.32) 100%);
+      backdrop-filter: blur(8px) brightness(1.6);
+      -webkit-backdrop-filter: blur(8px) brightness(1.6);
+      box-shadow: 0 0 30px rgba(150, 200, 255, 0.45),
+        inset 0 2px 8px rgba(232, 246, 255, 0.38),
+        inset 0 0 14px rgba(200, 230, 255, 0.25);
     }
+    /* The push-back: keys dip under the finger. The individual `scale`
+     * property composes with `transform`, so the gems keep their place. */
+    .phone-gem.dip,
+    .phone-button.dip { scale: 0.92; }
+    .phone-gem:active { scale: 0.92; }
     /* Shoulders: index-finger weapon gems crawling up the sides. */
     .phone-gem.shoulder-prev,
     .phone-gem.shoulder-next {
@@ -952,9 +1087,19 @@
     <section class="viewport">
       <canvas id="canvas" tabindex="0" aria-label="YouHexen2 game canvas"></canvas>
       <div class="canvas-hint">Tap/click the canvas to focus input. On platforms without Pointer Lock (notably iPadOS Safari), mouselook remains limited.</div>
-      <button id="phone-menu-button" class="phone-top-button" type="button" aria-label="Open in-game menu">☰</button>
+      <button id="phone-menu-button" class="phone-top-button phone-gem" type="button" aria-label="Open in-game menu">
+        <span class="burger-strata" aria-hidden="true"><span class="stratum"></span><span class="stratum"></span><span class="stratum"></span></span>
+      </button>
       <div id="phone-controls" class="phone-controls" aria-label="Touch controls">
-        <div class="phone-look phone-game-control" data-phone-action="look" aria-label="Look: drag to turn, tap to attack"></div>
+        <div class="phone-look phone-game-control" data-phone-action="look" aria-label="Look: drag to turn, tap to attack">
+          <div class="phone-breath" data-phone-breath aria-hidden="true">
+            <div class="breath-glow"></div>
+            <div class="breath-ring"></div>
+            <div class="breath-ring2"></div>
+            <div class="breath-dimple"></div>
+            <div class="breath-thumb-pos"><div class="breath-thumb"></div></div>
+          </div>
+        </div>
         <div class="phone-strip phone-game-control" data-phone-action="swipe" data-detent-left="artifactNext" data-detent-right="artifactPrev" aria-label="Swipe sideways to change artifact"></div>
         <div class="phone-stick phone-game-control" data-phone-action="stick" aria-label="Move: push gently to walk, shove to run">
           <span class="stick-arm n" aria-hidden="true"></span>

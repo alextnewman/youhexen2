@@ -1550,6 +1550,11 @@ function bindUi() {
   ui.perfCopyButton?.addEventListener('click', () => copyPerfReport());
   ui.canvas?.addEventListener('click', tryCaptureInput);
   ui.phoneMenuButton?.addEventListener('click', togglePhoneMenuButton);
+  /* The menu burger wears the pane's glass, so it wakes like the gems do. */
+  ui.phoneMenuButton?.addEventListener('pointerdown', () => ui.phoneMenuButton.classList.add('lit'));
+  for (const name of ['pointerup', 'pointercancel', 'pointerleave']) {
+    ui.phoneMenuButton?.addEventListener(name, () => ui.phoneMenuButton.classList.remove('lit'));
+  }
   ui.phoneResumeButton?.addEventListener('click', closePhoneOverlay);
   ui.phoneEscapeButton?.addEventListener('click', () => {
     engineKey(HEXEN_TOUCH_KEYCODES.menu, true);

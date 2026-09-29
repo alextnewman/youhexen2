@@ -24,7 +24,7 @@ test('immersive play spends no screen space on safe-area padding', () => {
 });
 
 test('a connected controller replaces the launcher hamburger', () => {
-  assert.match(html, /body\[data-gamepad="true"\] \.phone-top-button \{ display: none; \}/);
+  assert.match(html, /body\[data-gamepad="true"\] #phone-menu-button \{ display: none; \}/);
   assert.match(app, /document\.body\.dataset\.gamepad = state\.gamepadConnected \? 'true' : 'false';/);
   assert.match(app, /addEventListener\('gamepadconnected', \(\) => \{\n\s*state\.gamepadConnected = true;/);
   assert.match(app, /addEventListener\('gamepaddisconnected', \(\) => \{\n\s*state\.gamepadConnected = false;/);

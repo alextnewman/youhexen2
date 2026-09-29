@@ -31,7 +31,7 @@ function functionBody(source, signature) {
 test('immersive layout is driven by its own attribute, not by phone mode', () => {
   assert.match(html, /body\[data-engine-state="running"\]\[data-immersive="true"\] \.topbar/);
   assert.match(html, /body\[data-engine-state="running"\]\[data-immersive="true"\] \.viewport/);
-  assert.match(html, /body\[data-engine-state="running"\]\[data-immersive="true"\] \.phone-top-button/);
+  assert.match(html, /body\[data-engine-state="running"\]\[data-immersive="true"\] #phone-menu-button/);
   assert.doesNotMatch(html, /body\[data-engine-state="running"\]\[data-phone-mode="true"\] \.topbar/,
     'hiding the launcher chrome must not depend on phone mode any more');
   assert.match(app, /document\.body\.dataset\.immersive = \(state\.immersive \|\| state\.phoneMode\)/);

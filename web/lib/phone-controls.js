@@ -143,6 +143,10 @@ export class PhoneControls {
     this.latchGrace = new Map();
     /* Rim-slew loop handle while a look pointer rests past the rim. */
     this.rimRaf = 0;
+    /* The look surface's breathing glow, when the host provides one:
+     * purely visual, never touches the engine. */
+    this.breath = null;
+    this.breathThumb = null;
 
     this.bound = {
       pointerdown: (event) => this.onPointerDown(event),
@@ -156,6 +160,8 @@ export class PhoneControls {
   attach() {
     if (!this.root) return;
     this.enabled = true;
+    this.breath = this.root.querySelector?.('[data-phone-breath]') ?? null;
+    this.breathThumb = this.breath?.querySelector?.('.breath-thumb-pos') ?? null;
     this.root.addEventListener('pointerdown', this.bound.pointerdown);
     this.root.addEventListener('pointermove', this.bound.pointermove);
     this.root.addEventListener('pointerup', this.bound.pointerup);
@@ -201,9 +207,17 @@ export class PhoneControls {
     event.target?.setPointerCapture?.(event.pointerId);
 
     if (action === 'stick') {
-      this.pointerOwners.set(event.pointerId, { type: 'stick', action });
+      const armEls = {};
+      for (const dir of ['n', 's', 'e', 'w']) {
+        armEls[dir] = element?.querySelector?.(`.stick-arm.${dir}`) ?? null;
+      }
+      const stickOwner = { type: 'stick', action, element, armEls };
+      this.pointerOwners.set(event.pointerId, stickOwner);
+      /* The cross wakes where touched. */
+      element?.classList?.add('lit');
       this.stickCenter = rectCenter(event.target, eventPoint(event));
       this.updateStick(event);
+      this.lightStickArms(stickOwner);
       return;
     }
 
@@ -212,6 +226,7 @@ export class PhoneControls {
       this.pointerOwners.set(event.pointerId, {
         type: 'look',
         action,
+        element,
         anchor: point,
         downX: point.x,
         downY: point.y,
@@ -224,6 +239,9 @@ export class PhoneControls {
       this.lastLookPoint = point;
       this.lastLookTime = typeof event.timeStamp === 'number' ? event.timeStamp : null;
       this.lookSpeed = 0;
+      /* The look surface wakes where the thumb lands, breathing. */
+      element?.classList?.add('lit');
+      this.showBreath(element, point);
       return;
     }
 
@@ -258,6 +276,8 @@ export class PhoneControls {
         }
         const owner = { type: 'latch', action, key, element, held: false, holdTimer: 0 };
         this.pointerOwners.set(event.pointerId, owner);
+        /* Glass wakes where touched; the dip is the push-back. */
+        element?.classList?.add('lit', 'dip');
         owner.holdTimer = setTimeout(() => {
           if (this.pointerOwners.get(event.pointerId) !== owner) return;
           owner.held = true;
@@ -268,7 +288,8 @@ export class PhoneControls {
         }, this.options.latchHoldMs);
         return;
       }
-      this.pointerOwners.set(event.pointerId, { type: 'button', action, key });
+      this.pointerOwners.set(event.pointerId, { type: 'button', action, key, element });
+      element?.classList?.add('lit', 'dip');
       if (key) {
         this.pressKey(key);
         buzz(this.options.haptics, this.options.hapticDurationMs);
@@ -284,6 +305,7 @@ export class PhoneControls {
 
     if (owner.type === 'stick') {
       this.updateStick(event);
+      this.lightStickArms(owner);
       return;
     }
     if (owner.type === 'swipe') {
@@ -364,7 +386,50 @@ export class PhoneControls {
         owner.rimDY = 0;
         this.stopRimLoop();
       }
+      this.moveBreath(owner, point);
     }
+  }
+
+  /* The cross lights the arm in the push direction. Purely visual. */
+  lightStickArms(owner) {
+    const armEls = owner?.armEls;
+    if (!armEls) return;
+    const { x, y } = this.moveVector;
+    let dir = '';
+    if (Math.hypot(x, y) > 0.25) {
+      dir = Math.abs(x) > Math.abs(y) ? (x > 0 ? 'e' : 'w') : (y > 0 ? 's' : 'n');
+    }
+    for (const [d, el] of Object.entries(armEls)) {
+      el?.classList?.toggle('lit', d === dir);
+    }
+  }
+
+  /* The look surface breathes where the thumb lands: the glow appears at
+   * the touch-down anchor and drifts with the finger, while the ambient
+   * light answers the speed. Purely visual, never touches the engine. */
+  showBreath(element, point) {
+    if (!this.breath) return;
+    const rect = element?.getBoundingClientRect?.();
+    const x = rect ? point.x - rect.left : point.x;
+    const y = rect ? point.y - rect.top : point.y;
+    this.breath.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+    this.breath.style.setProperty('--b', '0');
+    if (this.breathThumb) this.breathThumb.style.transform = 'translate(0px, 0px)';
+    this.breath.classList.add('on');
+  }
+
+  moveBreath(owner, point) {
+    if (!this.breath || !this.breath.classList.contains('on')) return;
+    const dx = clamp(point.x - owner.anchor.x, -80, 80);
+    const dy = clamp(point.y - owner.anchor.y, -80, 80);
+    if (this.breathThumb) {
+      this.breathThumb.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px)`;
+    }
+    this.breath.style.setProperty('--b', Math.min(1, (this.lookSpeed || 0) * 0.12).toFixed(2));
+  }
+
+  hideBreath() {
+    this.breath?.classList?.remove('on');
   }
 
   onPointerEnd(event) {
@@ -381,10 +446,14 @@ export class PhoneControls {
       this.root?.style?.setProperty('--stick-x', '0px');
       this.root?.style?.setProperty('--stick-y', '0px');
       this.root?.style?.setProperty('--stick-power', '0');
+      owner.element?.classList?.remove('lit');
+      for (const el of Object.values(owner.armEls ?? {})) el?.classList?.remove('lit');
     } else if (owner.type === 'look') {
       this.lastLookPoint = null;
       this.lastLookTime = null;
       this.lookSpeed = null;
+      owner.element?.classList?.remove('lit');
+      this.hideBreath();
       if (owner.rimActive) {
         owner.rimActive = false;
         owner.rimDX = 0;
@@ -395,6 +464,7 @@ export class PhoneControls {
     } else if (owner.type === 'swipe') {
       /* Detents fire on the move; release is just the door closing. */
     } else if (owner.type === 'latch') {
+      owner.element?.classList?.remove('lit', 'dip');
       if (owner.holdTimer) {
         clearTimeout(owner.holdTimer);
         owner.holdTimer = 0;
@@ -416,6 +486,7 @@ export class PhoneControls {
         buzz(this.options.haptics, 14);
       }
     } else if (owner.type === 'button' && owner.key) {
+      owner.element?.classList?.remove('lit', 'dip');
       this.releaseKey(owner.key);
     }
   }
@@ -541,6 +612,15 @@ export class PhoneControls {
 
   releaseAll() {
     this.stopRimLoop();
+    this.hideBreath();
+    /* Every woken control is put back to sleep deterministically through
+     * the owners and latch entries that woke it — no DOM sweep needed. */
+    const sleep = (el) => el?.classList?.remove('lit', 'dip');
+    for (const owner of this.pointerOwners.values()) {
+      sleep(owner.element);
+      for (const el of Object.values(owner.armEls ?? {})) el?.classList?.remove('lit');
+    }
+    for (const entry of this.latches.values()) sleep(entry.element);
     for (const owner of this.pointerOwners.values()) {
       if (owner.type === 'latch') {
         if (owner.holdTimer) clearTimeout(owner.holdTimer);
