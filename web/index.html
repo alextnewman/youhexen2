@@ -499,15 +499,12 @@
     /* The look layer is the whole screen behind the controls: every drag
      * that is not on a gem, the cross, or the strip turns the camera, and
      * a quick tap fires. No dead bands between controls. Later siblings
-     * win the hit test. The layer wakes faintly where touched, and grows
-     * a slow-breathing glow where the thumb lands — the glow drifts with
-     * the finger while the ambient light answers its speed. */
+     * win the hit test. The layer itself stays dark when touched — the
+     * only light is the breathing blob under the thumb. */
     .phone-look {
       position: absolute;
       inset: 0;
-      transition: background 0.25s;
     }
-    .phone-look.lit { background: rgba(140, 170, 210, 0.08); }
     .phone-breath {
       position: absolute;
       left: 0;
