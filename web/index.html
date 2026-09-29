@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#2b2242">
+  <meta name="theme-color" content="#070912">
   <meta name="description" content="YouHexen2 is a web-native HTML5 port of uHexen2 for installed iOS PWAs, powered by WebGPU.">
   <title>YouHexen2</title>
   <link rel="manifest" href="./manifest.webmanifest">
@@ -17,22 +17,25 @@
       --safe-right: env(safe-area-inset-right, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --safe-left: env(safe-area-inset-left, 0px);
-      --chrome-bg: rgba(12, 10, 18, 0.94);
-      --panel-bg: rgba(24, 19, 37, 0.92);
-      --panel-border: rgba(255, 255, 255, 0.1);
-      --accent: #ccad63;
-      --text-dim: #c3bed5;
+      --serif: Georgia, 'Times New Roman', serif;
+      --ink: #eef2ff;
+      --chrome-bg: rgba(16, 22, 44, 0.72);
+      --panel-bg: rgba(200, 220, 255, 0.05);
+      --panel-border: rgba(200, 225, 255, 0.16);
+      --accent: #e8c26d;
+      --text-dim: #a9b4d4;
       --ok: #8dd890;
       --warn: #e8c26d;
       --err: #ff7e7e;
-      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: system-ui, -apple-system, 'Segoe UI', Inter, sans-serif;
     }
     * { box-sizing: border-box; }
     html, body {
       margin: 0;
       min-height: 100%;
-      background: radial-gradient(circle at top, #2a2142 0%, #15111f 45%, #06070c 100%);
-      color: #f7f5fb;
+      background: radial-gradient(120% 90% at 50% -10%, #141b36 0%, #0a0e20 42%, #05070f 100%);
+      background-attachment: fixed;
+      color: #eef2ff;
       overscroll-behavior: none;
     }
     body {
@@ -83,25 +86,48 @@
       border-radius: 0;
       touch-action: none;
     }
+    #motes {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
     .topbar {
+      position: relative;
+      z-index: 1;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
       gap: 0.75rem;
-      padding: 0.75rem 1rem;
-      background: var(--chrome-bg);
-      border-bottom: 1px solid var(--panel-border);
-      backdrop-filter: blur(14px);
+      padding: 0.9rem clamp(1rem, 4vw, 2rem);
+      background: linear-gradient(180deg, rgba(16, 22, 44, 0.72), rgba(16, 22, 44, 0.28));
+      border-bottom: 1px solid rgba(200, 225, 255, 0.10);
+      backdrop-filter: blur(16px) saturate(140%);
+      -webkit-backdrop-filter: blur(16px) saturate(140%);
     }
     .topbar h1 {
       margin: 0;
-      font-size: 1rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
+      font-family: var(--serif);
+      font-weight: 400;
+      font-size: 1.35rem;
+      letter-spacing: 0.14em;
+      text-shadow: 0 0 22px rgba(180, 200, 255, 0.35);
     }
     .topbar small { color: var(--text-dim); }
+    #offline-text {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      border: 1px solid var(--panel-border);
+      border-radius: 999px;
+      padding: 0.5rem 0.9rem;
+      background: rgba(200, 220, 255, 0.05);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      white-space: nowrap;
+    }
     .shell {
+      position: relative;
+      z-index: 1;
       display: grid;
       grid-template-columns: minmax(18rem, 28rem) 1fr;
       min-height: 0;
@@ -115,14 +141,28 @@
     }
     .stack { display: grid; gap: 0.9rem; }
     .card {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 16px;
-      padding: 1rem;
+      background: linear-gradient(165deg,
+        rgba(200, 220, 255, 0.10),
+        rgba(200, 220, 255, 0.03) 55%,
+        rgba(8, 11, 24, 0.28));
+      border: 1px solid var(--panel-border);
+      border-radius: 20px;
+      padding: 1.15rem 1.25rem;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.10),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.28),
+        0 18px 50px rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(18px) saturate(140%);
+      -webkit-backdrop-filter: blur(18px) saturate(140%);
     }
     .card h2 {
-      margin: 0 0 0.55rem;
-      font-size: 0.95rem;
+      margin: 0 0 0.65rem;
+      font-family: var(--serif);
+      font-weight: 400;
+      font-size: 1.08rem;
+      letter-spacing: 0.08em;
+      color: var(--ink);
+      text-shadow: 0 0 18px rgba(180, 200, 255, 0.28);
     }
     .card p, .card li, .card code, .card small {
       color: var(--text-dim);
@@ -135,29 +175,91 @@
     }
     button {
       appearance: none;
-      border: 1px solid rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(200, 225, 255, 0.20);
       border-radius: 999px;
-      padding: 0.75rem 1rem;
-      font: inherit;
-      color: white;
-      background: rgba(255, 255, 255, 0.08);
+      padding: 0.8rem 1.35rem;
+      min-height: 44px;
+      font: 600 0.95rem/1 system-ui, -apple-system, 'Segoe UI', Inter, sans-serif;
+      letter-spacing: 0.02em;
+      color: var(--ink);
+      background: linear-gradient(165deg, rgba(200, 220, 255, 0.13), rgba(200, 220, 255, 0.04));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 6px 18px rgba(0, 0, 0, 0.35);
       cursor: pointer;
+      transition: transform 0.12s ease, box-shadow 0.2s ease, background 0.2s ease;
     }
-    button:hover { background: rgba(255, 255, 255, 0.14); }
-    button:disabled { opacity: 0.45; cursor: not-allowed; }
-    button.primary { background: linear-gradient(135deg, #6e569b, #49376e); }
-    button.primary:hover { background: linear-gradient(135deg, #7b62ad, #53407e); }
+    button:hover {
+      transform: translateY(-1px);
+      background: linear-gradient(165deg, rgba(200, 220, 255, 0.20), rgba(200, 220, 255, 0.07));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18),
+        0 8px 22px rgba(0, 0, 0, 0.4), 0 0 18px rgba(170, 195, 255, 0.16);
+    }
+    button:active { transform: translateY(1px) scale(0.99); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+    button.primary {
+      border-color: rgba(190, 210, 255, 0.42);
+      background: linear-gradient(165deg, rgba(190, 210, 255, 0.22), rgba(190, 210, 255, 0.08));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.20),
+        0 6px 18px rgba(0, 0, 0, 0.35), 0 0 16px rgba(170, 195, 255, 0.18);
+    }
+    button.primary:hover {
+      background: linear-gradient(165deg, rgba(190, 210, 255, 0.30), rgba(190, 210, 255, 0.12));
+    }
+    /* The one warm object on a cold altar: the launch button keeps the gold. */
+    #launch-button {
+      font-family: var(--serif);
+      font-size: 1.25rem;
+      font-weight: 400;
+      letter-spacing: 0.08em;
+      color: #2a1c08;
+      padding: 1rem 2.2rem;
+      border: 1px solid rgba(255, 236, 190, 0.65);
+      background: linear-gradient(160deg, #ffedb9 0%, #e8c26d 42%, #bd8c3c 76%, #8a5f28 100%);
+      box-shadow:
+        0 0 26px rgba(232, 194, 109, 0.35),
+        0 12px 32px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.75),
+        inset 0 -3px 8px rgba(120, 70, 20, 0.45);
+      text-shadow: 0 1px 0 rgba(255, 240, 200, 0.5);
+    }
+    #launch-button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow:
+        0 0 40px rgba(232, 194, 109, 0.5),
+        0 14px 36px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8),
+        inset 0 -3px 8px rgba(120, 70, 20, 0.45);
+    }
+    #launch-button:active:not(:disabled) { transform: translateY(2px) scale(0.99); }
+    #launch-button:disabled {
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 6px 18px rgba(0, 0, 0, 0.35);
+    }
+    #launch-button.kindling { animation: kindle 0.9s ease; }
+    @keyframes kindle {
+      0% { box-shadow: 0 0 26px rgba(232,194,109,.35), 0 12px 32px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.75), inset 0 -3px 8px rgba(120,70,20,.45); }
+      35% { box-shadow: 0 0 70px rgba(255,220,150,.85), 0 12px 32px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.9), inset 0 -3px 8px rgba(120,70,20,.45); }
+      100% { box-shadow: 0 0 26px rgba(232,194,109,.35), 0 12px 32px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.75), inset 0 -3px 8px rgba(120,70,20,.45); }
+    }
     #drop-zone {
-      min-height: 9rem;
+      min-height: 8.5rem;
       display: grid;
       place-items: center;
       text-align: center;
-      border: 2px dashed rgba(204, 173, 99, 0.45);
+      border: 1px solid rgba(180, 200, 255, 0.18);
       border-radius: 18px;
-      padding: 1rem;
-      background: rgba(204, 173, 99, 0.06);
+      padding: 1.2rem;
+      color: var(--text-dim);
+      background: radial-gradient(120% 150% at 50% 0%,
+        rgba(150, 175, 235, 0.10), rgba(5, 7, 14, 0.55) 72%);
+      box-shadow: inset 0 10px 34px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
     }
-    #drop-zone[data-drag="true"] { background: rgba(204, 173, 99, 0.13); }
+    #drop-zone[data-drag="true"] {
+      border-color: rgba(232, 194, 109, 0.6);
+      transform: translateY(-2px);
+      box-shadow: inset 0 10px 34px rgba(0, 0, 0, 0.6),
+        0 0 34px rgba(232, 194, 109, 0.20),
+        inset 0 1px 0 rgba(255, 255, 255, 0.10);
+    }
     #status-panel[data-kind="error"] #status-text, #import-message[data-kind="error"] { color: var(--err); }
     #import-message[data-kind="success"], #save-message[data-kind="success"] { color: var(--ok); }
     #save-message[data-kind="error"] { color: var(--err); }
@@ -168,11 +270,13 @@
       max-height: 14rem;
       margin: 0;
       overflow: auto;
-      padding: 0.7rem;
-      border-radius: 10px;
-      background: rgba(0, 0, 0, 0.42);
-      color: var(--text-dim);
-      font: 0.78rem/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      padding: 0.8rem;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 0, 0, 0.5);
+      background: rgba(2, 4, 10, 0.62);
+      box-shadow: inset 0 4px 18px rgba(0, 0, 0, 0.65);
+      color: #9fb0d8;
+      font: 0.78rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       white-space: pre-wrap;
       overflow-wrap: anywhere;
       -webkit-user-select: text;
@@ -450,21 +554,102 @@
      * no-op there: the panel has no chrome to go back to while playing. */
     body[data-phone-mode="true"] #windowed-button { display: none; }
     input[type="file"] { display: none; }
-    select, input[type="range"] {
-      color: #fff;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.16);
+    select {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 100%;
+      color: var(--ink);
+      font: 500 0.92rem system-ui, -apple-system, 'Segoe UI', Inter, sans-serif;
+      border: 1px solid rgba(200, 225, 255, 0.20);
       border-radius: 999px;
-      padding: 0.5rem 0.7rem;
+      padding: 0.7rem 2.4rem 0.7rem 1.1rem;
+      min-height: 44px;
+      background-color: rgba(200, 220, 255, 0.06);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23aeb9d6' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 1.1rem center;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      cursor: pointer;
+    }
+    select:hover { background-color: rgba(200, 220, 255, 0.10); }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 30px;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: 3px;
+      background: linear-gradient(90deg, rgba(190, 210, 255, 0.30), rgba(190, 210, 255, 0.10));
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      margin-top: -8px;
+      border-radius: 50%;
+      border: 1px solid rgba(225, 235, 255, 0.85);
+      background: radial-gradient(circle at 35% 30%, #ffffff, #bcd0ff 45%, #6f86c9 82%);
+      box-shadow: 0 0 14px rgba(170, 195, 255, 0.6), 0 2px 8px rgba(0, 0, 0, 0.55);
+    }
+    input[type="range"]::-moz-range-track {
+      height: 6px;
+      border-radius: 3px;
+      background: linear-gradient(90deg, rgba(190, 210, 255, 0.30), rgba(190, 210, 255, 0.10));
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1px solid rgba(225, 235, 255, 0.85);
+      background: radial-gradient(circle at 35% 30%, #ffffff, #bcd0ff 45%, #6f86c9 82%);
+      box-shadow: 0 0 14px rgba(170, 195, 255, 0.6), 0 2px 8px rgba(0, 0, 0, 0.55);
+    }
+    input[type="checkbox"] {
+      width: 1.15rem;
+      height: 1.15rem;
+      accent-color: var(--accent);
+      cursor: pointer;
     }
     label.setting {
       display: grid;
-      gap: 0.35rem;
-      margin: 0.55rem 0;
+      gap: 0.4rem;
+      margin: 0.7rem 0;
       color: var(--text-dim);
+      font-size: 0.92rem;
+    }
+    label.setting .sname {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    label.setting output {
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+      font-size: 0.88rem;
+    }
+    label.setting.check {
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: 0.7rem;
+      cursor: pointer;
     }
     ul { margin: 0.5rem 0 0; padding-left: 1.2rem; }
     code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    :focus-visible {
+      outline: 2px solid rgba(190, 210, 255, 0.85);
+      outline-offset: 3px;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      button, #drop-zone { transition: none; }
+      #launch-button.kindling { animation: none; }
+    }
     @media (max-width: 1024px) {
       .shell { grid-template-columns: 1fr; grid-template-rows: auto minmax(18rem, 1fr); }
       #control-panel { border-right: 0; border-bottom: 1px solid var(--panel-border); }
@@ -600,13 +785,13 @@
               <option value="left">Move right / buttons left</option>
             </select>
           </label>
-          <label class="setting">Look sensitivity
+          <label class="setting"><span class="sname">Look sensitivity <output id="look-sensitivity-output">1</output></span>
             <input id="look-sensitivity-setting" type="range" min="0.5" max="2" step="0.1" value="1">
           </label>
-          <label class="setting">Look acceleration
+          <label class="setting"><span class="sname">Look acceleration <output id="look-accel-output">0.8</output></span>
             <input id="look-accel-setting" type="range" min="0" max="1.5" step="0.1" value="0.8">
           </label>
-          <label class="setting">Stick response
+          <label class="setting"><span class="sname">Stick response <output id="stick-response-output">1.7</output></span>
             <input id="stick-response-setting" type="range" min="1" max="2.5" step="0.1" value="1.7">
           </label>
           <label class="setting">Gyro aim
@@ -615,11 +800,11 @@
               <option value="on">On</option>
             </select>
           </label>
-          <label class="setting">Gyro sensitivity
+          <label class="setting"><span class="sname">Gyro sensitivity <output id="gyro-sensitivity-output">1</output></span>
             <input id="gyro-sensitivity-setting" type="range" min="0.25" max="2" step="0.05" value="1">
           </label>
-          <label class="setting"><input id="gyro-invert-y-setting" type="checkbox"> Invert gyro Y</label>
-          <label class="setting"><input id="touch-invert-y-setting" type="checkbox"> Invert touch look Y</label>
+          <label class="setting check"><input id="gyro-invert-y-setting" type="checkbox"> Invert gyro Y</label>
+          <label class="setting check"><input id="touch-invert-y-setting" type="checkbox"> Invert touch look Y</label>
           <small id="gyro-message" class="muted">Optional during touch play. Compatible physical controllers also work when the browser exposes their motion sensors.</small>
         </section>
         <section class="card">
@@ -681,6 +866,84 @@
       </div>
     </section>
   </main>
+  <script>
+    /* Pane-light launcher chrome: ember motes behind the glass, live slider
+     * readouts, and a kindling pulse on the launch button. Cosmetic only;
+     * every behavior still belongs to app.js. */
+    (function () {
+      'use strict';
+      var cv = document.getElementById('motes');
+      var cx = cv.getContext('2d');
+      var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      var W = 0, H = 0, motes = [];
+      function spawn(anywhere) {
+        return {
+          x: Math.random() * W,
+          y: anywhere ? Math.random() * H : H + 12,
+          r: (0.6 + Math.random() * 1.6) * dpr,
+          v: (0.05 + Math.random() * 0.20) * dpr,
+          ph: Math.random() * Math.PI * 2,
+          sp: 0.004 + Math.random() * 0.012,
+          warm: Math.random() < 0.14
+        };
+      }
+      function size() {
+        W = cv.width = Math.floor(window.innerWidth * dpr);
+        H = cv.height = Math.floor(window.innerHeight * dpr);
+        cv.style.width = window.innerWidth + 'px';
+        cv.style.height = window.innerHeight + 'px';
+        var n = Math.min(90, Math.floor(window.innerWidth * window.innerHeight / 16000));
+        motes = [];
+        for (var i = 0; i < n; i++) motes.push(spawn(true));
+      }
+      function frame() {
+        /* While the game runs the launcher chrome is hidden; let the motes sleep. */
+        if (document.body.getAttribute('data-engine-state') !== 'running' && !document.hidden) {
+          cx.clearRect(0, 0, W, H);
+          for (var i = 0; i < motes.length; i++) {
+            var m = motes[i];
+            m.y -= m.v; m.ph += m.sp;
+            if (m.y < -14) motes[i] = m = spawn(false);
+            var a = 0.22 + 0.55 * (0.5 + 0.5 * Math.sin(m.ph));
+            cx.beginPath();
+            cx.arc(m.x, m.y, m.r, 0, 6.2832);
+            cx.fillStyle = m.warm
+              ? 'rgba(232,194,109,' + (a * 0.8).toFixed(3) + ')'
+              : 'rgba(185,205,255,' + a.toFixed(3) + ')';
+            cx.fill();
+          }
+        }
+        if (!reduced) requestAnimationFrame(frame);
+      }
+      window.addEventListener('resize', size);
+      size();
+      frame();
+      var pairs = [
+        ['look-sensitivity-setting', 'look-sensitivity-output'],
+        ['look-accel-setting', 'look-accel-output'],
+        ['stick-response-setting', 'stick-response-output'],
+        ['gyro-sensitivity-setting', 'gyro-sensitivity-output']
+      ];
+      pairs.forEach(function (pair) {
+        var el = document.getElementById(pair[0]);
+        var out = document.getElementById(pair[1]);
+        if (!el || !out) return;
+        var show = function () { out.textContent = el.value; };
+        el.addEventListener('input', show);
+        show();
+      });
+      var launch = document.getElementById('launch-button');
+      if (launch) {
+        launch.addEventListener('click', function () {
+          launch.classList.remove('kindling');
+          void launch.offsetWidth;
+          launch.classList.add('kindling');
+          setTimeout(function () { launch.classList.remove('kindling'); }, 950);
+        });
+      }
+    })();
+  </script>
   <script type="module" src="./app.js"></script>
 </body>
 </html>
