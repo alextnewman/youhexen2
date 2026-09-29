@@ -27,7 +27,7 @@ export const DEFAULT_PHONE_CONTROL_OPTIONS = Object.freeze({
    * this power. 1 = linear; higher values stretch the walk zone so a
    * casual thumb placement walks and only a deliberate shove to the
    * edge punches it to full run. 1 = the old hyperspace toggle. */
-  stickResponse: 1.7,
+  stickResponse: 2.4,
   lookSensitivity: 1,
   /* Drag-look acceleration: slow drags stay ~1:1 for fine aim, fast
    * flicks get boosted for gross turns in one gesture. 0 = linear. */

@@ -121,9 +121,9 @@ test('stick deadzone swallows the rest position and rescales the sweep', () => {
 
   assert.equal(moves.length, 2);
   assert.deepEqual(moves[1], [0, 0]);
-  const expected = Math.pow((0.5 - 0.18) / (1 - 0.18), 1.7);
+  const expected = Math.pow((0.5 - 0.18) / (1 - 0.18), 2.4);
   assert.ok(Math.abs(moves[0][0]) < 1e-9);
-  assert.ok(Math.abs(moves[0][1] + expected) < 1e-9, `half deflection walks gently at ${expected}`);
+  assert.ok(Math.abs(moves[0][1] + expected) < 1e-9, `half deflection barely walks at ${expected}`);
 });
 
 test('stick response 1 restores the old linear sweep', () => {
@@ -152,7 +152,7 @@ test('stick response curve still reaches full run at the edge', () => {
     key() {},
     look() {},
     move: (x, y) => moves.push([x, y]),
-  }, { keys: KEYS }); // default stickResponse 1.7
+  }, { keys: KEYS }); // default stickResponse 2.4
   controls.attach();
 
   root.dispatch('pointerdown', pointer(stick, 1, 60, 60));
@@ -180,7 +180,7 @@ test('stick thumb travel is proportional to the ring and reports deflection powe
   // Half deflection: power follows the response curve like the vector.
   root.dispatch('pointermove', pointer(stick, 1, 60, 30));
   assert.equal(root.style.get('--stick-y'), '-17.4px');
-  const expected = Math.pow((0.5 - 0.18) / (1 - 0.18), 1.7);
+  const expected = Math.pow((0.5 - 0.18) / (1 - 0.18), 2.4);
   assert.ok(Math.abs(Number(root.style.get('--stick-power')) - expected) < 1e-9);
   // Release parks the thumb and kills the glow.
   root.dispatch('pointerup', pointer(stick, 1, 60, 30));

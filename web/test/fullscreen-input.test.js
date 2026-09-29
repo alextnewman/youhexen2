@@ -168,6 +168,21 @@ test('touch controls switch safely between gameplay and menu layouts', () => {
     'menu-mode callbacks must not re-enter WebAssembly from IN_Commands');
 });
 
+test('the cross rests faint and reaches its tendrils when touched', () => {
+  assert.match(html, /--cross-size: 17rem/,
+    'the cross zone is large enough to graduate walk into run');
+  assert.match(html, /\.phone-stick \{[^}]*width: var\(--cross-size\)/,
+    'the stick wears the shared cross size');
+  assert.match(html, /\.phone-stick \{[^}]*opacity: 0\.3/,
+    'the resting cross stays a whisper');
+  assert.match(html, /\.phone-stick\.lit \.stick-arm\.n \{[^}]*height: 6\.6rem/,
+    'touch extends the tendrils outward from the heart');
+  assert.match(html, /\.phone-gem\.crouch \{[^}]*inset-inline-start: calc\(var\(--pad-s\) \+ var\(--cross-size\)/,
+    'crouch sits beside the cross, tracking its size');
+  assert.match(html, /\.phone-gem\.worlduse \{[^}]*bottom: calc\(var\(--pad-b\) \+ var\(--cross-size\)/,
+    'world-use rides above the cross, tracking its size');
+});
+
 test('Nitro and software modal confirmations do not poll browser input synchronously', () => {
   assert.match(cmake, /set\(RENDERER_SOURCES[\s\S]*\$\{COMMONDIR\}\/screen\.c[\s\S]*\)/,
     'all web renderer configurations compile the shared screen implementation');
