@@ -122,6 +122,23 @@ function buzz(enabled, durationMs) {
   }
 }
 
+function prefersReducedMotion() {
+  try {
+    return globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
+  } catch {
+    return false;
+  }
+}
+
+function nowMs() {
+  try {
+    if (typeof globalThis.performance?.now === 'function') return globalThis.performance.now();
+  } catch {
+    /* fall through */
+  }
+  return Date.now();
+}
+
 export class PhoneControls {
   constructor(root, bridge, options = {}) {
     this.root = root;
@@ -147,6 +164,13 @@ export class PhoneControls {
      * purely visual, never touches the engine. */
     this.breath = null;
     this.breathThumb = null;
+    /* Transient flourishes: a stage for particle effects, purely visual.
+     * The host may provide its own [data-phone-fx]; otherwise attach()
+     * raises one. Reduced-motion users get none of it. */
+    this.fxLayer = null;
+    this.fxReduced = false;
+    this.lastKindleT = 0;
+    this.lastStreakT = 0;
 
     this.bound = {
       pointerdown: (event) => this.onPointerDown(event),
@@ -162,6 +186,20 @@ export class PhoneControls {
     this.enabled = true;
     this.breath = this.root.querySelector?.('[data-phone-breath]') ?? null;
     this.breathThumb = this.breath?.querySelector?.('.breath-thumb-pos') ?? null;
+    /* The flourish stage: host-provided or raised here, above the gems,
+     * never intercepting touch. */
+    this.fxReduced = prefersReducedMotion();
+    this.fxLayer = this.root.querySelector?.('[data-phone-fx]') ?? null;
+    if (!this.fxLayer) {
+      const doc = this.root.ownerDocument ?? globalThis.document;
+      const layer = doc?.createElement?.('div');
+      if (layer) {
+        layer.className = 'phone-fx-layer';
+        layer.setAttribute?.('aria-hidden', 'true');
+        this.root.appendChild?.(layer);
+        this.fxLayer = layer;
+      }
+    }
     this.root.addEventListener('pointerdown', this.bound.pointerdown);
     this.root.addEventListener('pointermove', this.bound.pointermove);
     this.root.addEventListener('pointerup', this.bound.pointerup);
@@ -290,6 +328,8 @@ export class PhoneControls {
       }
       this.pointerOwners.set(event.pointerId, { type: 'button', action, key, element });
       element?.classList?.add('lit', 'dip');
+      /* Each control's flourish moves like its action. */
+      this.fxForPress(action, element, eventPoint(event));
       if (key) {
         this.pressKey(key);
         buzz(this.options.haptics, this.options.hapticDurationMs);
@@ -306,6 +346,12 @@ export class PhoneControls {
     if (owner.type === 'stick') {
       this.updateStick(event);
       this.lightStickArms(owner);
+      /* The trace kindles while it pushes, brighter with deflection. */
+      const power = Math.hypot(this.moveVector.x, this.moveVector.y);
+      if (power > 0.25) {
+        const point = eventPoint(event);
+        this.fxKindle(point.x, point.y, power);
+      }
       return;
     }
     if (owner.type === 'swipe') {
@@ -380,6 +426,8 @@ export class PhoneControls {
         owner.rimDY = (ry / mag) * excess;
         owner.rimActive = true;
         this.ensureRimLoop();
+        /* The rim answers at once: a crack of espresso on entry. */
+        this.emitRimStreak(owner);
       } else if (owner.rimActive) {
         owner.rimActive = false;
         owner.rimDX = 0;
@@ -425,11 +473,279 @@ export class PhoneControls {
     if (this.breathThumb) {
       this.breathThumb.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px)`;
     }
-    this.breath.style.setProperty('--b', Math.min(1, (this.lookSpeed || 0) * 0.12).toFixed(2));
+    /* The ambient light answers the speed — and doubles down at the rim,
+     * the doppio espresso at the drag's extremes. */
+    const rim = Math.hypot(owner.rimDX ?? 0, owner.rimDY ?? 0);
+    this.breath.style.setProperty('--b', Math.min(1, (this.lookSpeed || 0) * 0.12 + rim * 0.55).toFixed(2));
   }
 
   hideBreath() {
     this.breath?.classList?.remove('on');
+  }
+
+  /* ——— transient flourishes: the particle effects ———
+   * Each control's flourish moves like its action, DOM + WAAPI:
+   * a few nodes, transform/opacity only, removed on finish.
+   * Purely visual, never touches the engine. */
+
+  /* Stage coordinates for a client point, so flourishes land where the
+   * finger is even though the layer is positioned, not transformed. */
+  fxFromClient(x, y) {
+    const rect = this.fxLayer?.getBoundingClientRect?.();
+    if (!rect) return { x, y };
+    return { x: x - rect.left, y: y - rect.top };
+  }
+
+  fxPoint(element, fallback) {
+    const center = rectCenter(element, fallback);
+    if (!center) return null;
+    return this.fxFromClient(center.x, center.y);
+  }
+
+  spawnFx(cls, x, y) {
+    if (this.fxReduced || !this.fxLayer) return null;
+    const doc = this.root?.ownerDocument ?? globalThis.document;
+    const el = doc?.createElement?.('div');
+    if (!el) return null;
+    el.className = `fx ${cls}`;
+    if (el.style) {
+      el.style.left = `${x.toFixed(1)}px`;
+      el.style.top = `${y.toFixed(1)}px`;
+    }
+    this.fxLayer.appendChild?.(el);
+    return el;
+  }
+
+  playFx(el, frames, opts) {
+    if (!el) return;
+    let anim = null;
+    try {
+      anim = el.animate?.(frames, { fill: 'both', ...opts }) ?? null;
+    } catch {
+      anim = null;
+    }
+    if (anim) {
+      anim.onfinish = () => {
+        try {
+          el.remove?.();
+        } catch {
+          /* gone already */
+        }
+      };
+    } else {
+      try {
+        el.remove?.();
+      } catch {
+        /* gone already */
+      }
+    }
+  }
+
+  clearFx() {
+    /* Flourishes are transient; a clean slate sweeps the stage. */
+    let child = this.fxLayer?.firstChild ?? null;
+    while (child) {
+      const next = child.nextSibling ?? null;
+      try {
+        child.remove?.();
+      } catch {
+        /* gone already */
+      }
+      child = next;
+    }
+  }
+
+  /* ATTACK: a surge — bright shards rush toward the game, dying in the dark. */
+  fxSurge(element, fallback) {
+    const p = this.fxPoint(element, fallback);
+    if (!p) return;
+    /* "Toward the game" is toward the stage's heart. */
+    const rect = this.fxLayer?.getBoundingClientRect?.();
+    let dx = -1;
+    let dy = -0.35;
+    if (rect?.width) {
+      const vx = rect.width / 2 - p.x;
+      const vy = rect.height / 2 - p.y;
+      const d = Math.hypot(vx, vy);
+      if (d > 1) {
+        dx = vx / d;
+        dy = vy / d;
+      }
+    }
+    for (let i = 0; i < 3; i++) {
+      const s = this.spawnFx('fx-surge', p.x, p.y + (Math.random() - 0.5) * 60);
+      if (!s) return;
+      if (s.style) {
+        s.style.width = `${Math.round(22 + Math.random() * 24)}px`;
+        s.style.height = `${Math.round(2 + Math.random() * 2)}px`;
+      }
+      const dist = Math.round(60 + Math.random() * 40);
+      this.playFx(s, [
+        { transform: 'translate(-50%,-50%) scaleX(0.3)', opacity: 0.45 },
+        {
+          transform: `translate(calc(-50% + ${(dx * dist).toFixed(1)}px), calc(-50% + ${(dy * dist).toFixed(1)}px)) scaleX(1.2)`,
+          opacity: 0,
+        },
+      ], { duration: 280 + Math.random() * 100, easing: 'cubic-bezier(0.1, 0.7, 0.2, 1)' });
+    }
+  }
+
+  /* JUMP: a rise — soft motes lift and dissolve. */
+  fxRise(element, fallback) {
+    const p = this.fxPoint(element, fallback);
+    if (!p) return;
+    for (let i = 0; i < 4; i++) {
+      const m = this.spawnFx('fx-mote', p.x + (Math.random() - 0.5) * 50, p.y);
+      if (!m) return;
+      const lift = Math.round(26 + Math.random() * 18);
+      const drift = ((Math.random() - 0.5) * 20).toFixed(1);
+      this.playFx(m, [
+        { transform: 'translate(-50%,-50%) scale(1)', opacity: 0.35 },
+        { transform: `translate(calc(-50% + ${drift}px), calc(-50% - ${lift}px)) scale(0.4)`, opacity: 0 },
+      ], { duration: 480 + Math.random() * 140, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' });
+    }
+  }
+
+  /* WORLD USE: a ripple — still water answers a touch. */
+  fxRipple(element, fallback) {
+    const p = this.fxPoint(element, fallback);
+    if (!p) return;
+    for (let i = 0; i < 2; i++) {
+      this.playFx(this.spawnFx('fx-ring', p.x, p.y), [
+        { transform: 'translate(-50%,-50%) scale(0.5)', opacity: 0.3 },
+        { transform: 'translate(-50%,-50%) scale(1.6)', opacity: 0 },
+      ], { duration: 560, delay: i * 110, easing: 'cubic-bezier(0.2, 0.6, 0.3, 1)' });
+    }
+  }
+
+  /* WEAPON CHANGE: a swoop, not a plink — a short blade of light arcs
+   * toward the other shoulder and dies almost at once. */
+  fxSwoop(fromAction) {
+    const toAction = fromAction === 'nextWeapon' ? 'prevWeapon' : 'nextWeapon';
+    const fromEl = this.root?.querySelector?.(`[data-phone-action="${fromAction}"]`) ?? null;
+    const toEl = this.root?.querySelector?.(`[data-phone-action="${toAction}"]`) ?? null;
+    const p1 = this.fxPoint(fromEl, null);
+    const p2 = this.fxPoint(toEl, null);
+    if (!p1 || !p2) return;
+    const cx = (p1.x + p2.x) / 2;
+    const cy = Math.min(p1.y, p2.y) - 44;
+    const at = (t) => ({
+      x: (1 - t) * (1 - t) * p1.x + 2 * (1 - t) * t * cx + t * t * p2.x,
+      y: (1 - t) * (1 - t) * p1.y + 2 * (1 - t) * t * cy + t * t * p2.y,
+    });
+    const frames = [];
+    const steps = 16;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const p = at(t);
+      const q = at(Math.min(1, t + 0.03));
+      const ang = Math.atan2(q.y - p.y, q.x - p.x).toFixed(2);
+      frames.push({
+        transform: `translate(calc(-50% + ${(p.x - p1.x).toFixed(1)}px), calc(-50% + ${(p.y - p1.y).toFixed(1)}px)) rotate(${ang}rad)`,
+        opacity: (0.5 * (1 - t) * (1 - t)).toFixed(2),
+      });
+    }
+    this.playFx(this.spawnFx('fx-swoop', p1.x, p1.y), frames,
+      { duration: 550, easing: 'cubic-bezier(0.3, 0.6, 0.3, 1)' });
+  }
+
+  /* Every press sheds a few small diamonds — a drip, not a flash. */
+  fxDrips(element, fallback, n = 3) {
+    const p = this.fxPoint(element, fallback);
+    if (!p) return;
+    for (let i = 0; i < n; i++) {
+      const d = this.spawnFx('drip', p.x + (Math.random() - 0.5) * 20, p.y + (Math.random() - 0.5) * 10);
+      if (!d) return;
+      const size = Math.round(3 + Math.random() * 3);
+      if (d.style) d.style.width = d.style.height = `${size}px`;
+      const ang = Math.PI * (0.15 + Math.random() * 0.7);
+      const dist = 10 + Math.random() * 14;
+      const dx = (Math.cos(ang) * dist).toFixed(1);
+      const dy = (Math.sin(ang) * dist).toFixed(1);
+      this.playFx(d, [
+        { transform: 'translate(-50%,-50%) rotate(45deg) scale(1)', opacity: 0.4 },
+        { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) rotate(45deg) scale(0.5)`, opacity: 0 },
+      ], { duration: 380 + Math.random() * 140, delay: Math.random() * 70, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' });
+    }
+  }
+
+  /* The cross kindles while it pushes: sparks rise off the trace,
+   * brighter with deflection. Throttled — a spark every few frames. */
+  fxKindle(clientX, clientY, power) {
+    const now = nowMs();
+    if (now - this.lastKindleT < 70) return;
+    this.lastKindleT = now;
+    const p = this.fxFromClient(clientX, clientY);
+    const s = this.spawnFx('fx-spark', p.x + (Math.random() - 0.5) * 24, p.y + (Math.random() - 0.5) * 24);
+    if (!s) return;
+    const lift = Math.round(14 + power * 26 + Math.random() * 10);
+    const drift = ((Math.random() - 0.5) * 16).toFixed(1);
+    this.playFx(s, [
+      { transform: 'translate(-50%,-50%) scale(1)', opacity: (0.25 + power * 0.35).toFixed(2) },
+      { transform: `translate(calc(-50% + ${drift}px), calc(-50% - ${lift}px)) scale(0.3)`, opacity: 0 },
+    ], { duration: 420 + Math.random() * 160, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' });
+  }
+
+  /* Doppio espresso at the look surface's extremes: bright streaks tear
+   * outward past the rim while the view slews, harder with deflection. */
+  emitRimStreak(owner) {
+    const now = nowMs();
+    if (now - this.lastStreakT < 90) return;
+    this.lastStreakT = now;
+    const dx = owner.rimDX ?? 0;
+    const dy = owner.rimDY ?? 0;
+    const excess = Math.hypot(dx, dy);
+    if (excess <= 0.05) return;
+    const ux = dx / excess;
+    const uy = dy / excess;
+    const px = owner.anchor.x + clamp(ux * this.options.lookRadius, -80, 80);
+    const py = owner.anchor.y + clamp(uy * this.options.lookRadius, -80, 80);
+    const p = this.fxFromClient(px, py);
+    const s = this.spawnFx('fx-streak', p.x, p.y);
+    if (!s) return;
+    if (s.style) s.style.width = `${Math.round(18 + excess * 30)}px`;
+    const dist = Math.round(40 + excess * 60);
+    const ang = Math.atan2(uy, ux).toFixed(2);
+    this.playFx(s, [
+      { transform: `translate(-50%,-50%) rotate(${ang}rad) scaleX(0.4)`, opacity: 0.5 },
+      {
+        transform: `translate(calc(-50% + ${(ux * dist).toFixed(1)}px), calc(-50% + ${(uy * dist).toFixed(1)}px)) rotate(${ang}rad) scaleX(1.1)`,
+        opacity: 0,
+      },
+    ], { duration: 300, easing: 'cubic-bezier(0.1, 0.7, 0.2, 1)' });
+  }
+
+  /* Each control's flourish moves like its action. */
+  fxForPress(action, element, point) {
+    switch (action) {
+      case 'attack':
+        this.fxSurge(element, point);
+        this.fxDrips(element, point, 2);
+        break;
+      case 'jump':
+        this.fxRise(element, point);
+        this.fxDrips(element, point, 2);
+        break;
+      case 'worldUse':
+        this.fxRipple(element, point);
+        this.fxDrips(element, point, 2);
+        break;
+      case 'use':
+        /* The artifact gem: a small spill, nothing more. */
+        this.fxDrips(element, point, 3);
+        break;
+      case 'nextWeapon':
+      case 'prevWeapon':
+        this.fxSwoop(action);
+        this.fxDrips(element, point, 2);
+        break;
+      case 'crouch':
+        /* The latch glow is its answer. */
+        break;
+      default:
+        this.fxDrips(element, point, 2);
+        break;
+    }
   }
 
   onPointerEnd(event) {
@@ -503,6 +819,8 @@ export class PhoneControls {
     this.pressKey(key);
     this.releaseKey(key);
     buzz(this.options.haptics, this.options.hapticDurationMs);
+    /* A tap fires: the surge answers where the thumb struck. */
+    this.fxSurge(null, eventPoint(event));
   }
 
   /* Past the rim the look surface slews continuously: a rAF loop emits
@@ -524,6 +842,8 @@ export class PhoneControls {
       const dx = owner.rimDX * rate * dt;
       const dy = owner.rimDY * rate * dt;
       if (dx || dy) this.bridge.look(dx, dy);
+      /* Streaks keep tearing outward while the thumb parks the rim. */
+      this.emitRimStreak(owner);
       this.rimRaf = nextFrame(step);
     };
     this.rimRaf = nextFrame(step);
@@ -613,6 +933,7 @@ export class PhoneControls {
   releaseAll() {
     this.stopRimLoop();
     this.hideBreath();
+    this.clearFx();
     /* Every woken control is put back to sleep deterministically through
      * the owners and latch entries that woke it — no DOM sweep needed. */
     const sleep = (el) => el?.classList?.remove('lit', 'dip');

@@ -10,13 +10,15 @@ const KEYS = HEXEN_TOUCH_KEYCODES;
 
 function makeElement(action, rect = { left: 0, top: 0, width: 120, height: 120 }, children = {}) {
   const listeners = new Map();
-  const style = new Map();
   const classes = new Set();
-  return {
+  const childNodes = [];
+  const el = {
     dataset: action ? { phoneAction: action } : {},
+    className: '',
+    parentNode: null,
     style: {
-      setProperty: (name, value) => style.set(name, value),
-      get: (name) => style.get(name),
+      setProperty(name, value) { this[name] = value; },
+      get(name) { return this[name]; },
       transform: '',
     },
     classList: {
@@ -39,8 +41,30 @@ function makeElement(action, rect = { left: 0, top: 0, width: 120, height: 120 }
     removeEventListener(name) { listeners.delete(name); },
     setPointerCapture() {},
     releasePointerCapture() {},
+    setAttribute() {},
+    animate() { return { onfinish: null, cancel() {} }; },
+    appendChild(child) {
+      childNodes.push(child);
+      child.parentNode = el;
+      return child;
+    },
+    remove() {
+      const siblings = el.parentNode?.childNodes ?? [];
+      const i = siblings.indexOf(el);
+      if (i >= 0) siblings.splice(i, 1);
+      el.parentNode = null;
+    },
+    get firstChild() { return childNodes[0] ?? null; },
+    get childNodes() { return childNodes; },
+    get nextSibling() {
+      const siblings = el.parentNode?.childNodes ?? [];
+      const i = siblings.indexOf(el);
+      return i >= 0 ? siblings[i + 1] ?? null : null;
+    },
+    ownerDocument: { createElement: () => makeElement(null) },
     dispatch(name, event) { listeners.get(name)?.(event); },
   };
+  return el;
 }
 
 function pointer(target, pointerId, x, y) {
@@ -900,4 +924,130 @@ test('releaseAll puts every woken control back to sleep', () => {
   controls.releaseAll();
   assert.ok(!attack.classList.contains('lit'), 'lit cleared');
   assert.ok(!attack.classList.contains('dip'), 'dip cleared');
+});
+
+/* ——— transient flourishes: the particle effects ——— */
+
+function fxControls(extra = {}) {
+  const root = makeElement(null);
+  const controls = new PhoneControls(root, {
+    key() {},
+    look() {},
+    move() {},
+  }, { keys: KEYS, ...extra });
+  controls.attach();
+  return { root, controls };
+}
+
+function fxKinds(controls) {
+  return (controls.fxLayer?.childNodes ?? []).map((c) => c.className);
+}
+
+test('attach raises a flourish stage for transient particles', () => {
+  const { controls } = fxControls();
+  assert.ok(controls.fxLayer, 'fx layer exists');
+  assert.equal(controls.fxLayer.className, 'phone-fx-layer');
+  assert.equal(controls.fxReduced, false);
+});
+
+test('attack throws bright shards toward the game and sheds diamonds', () => {
+  const { root, controls } = fxControls();
+  const attack = makeElement('attack');
+  root.dispatch('pointerdown', pointer(attack, 1, 60, 60));
+  const kinds = fxKinds(controls);
+  assert.equal(kinds.filter((k) => k === 'fx fx-surge').length, 3, 'three shards');
+  assert.equal(kinds.filter((k) => k === 'fx drip').length, 2, 'two diamond drips');
+});
+
+test('jump rises on soft motes; world-use answers with a ripple', () => {
+  const { root, controls } = fxControls();
+  const jump = makeElement('jump');
+  const worldUse = makeElement('worldUse');
+  root.dispatch('pointerdown', pointer(jump, 1, 60, 60));
+  root.dispatch('pointerup', pointer(jump, 1, 60, 60));
+  let kinds = fxKinds(controls);
+  assert.equal(kinds.filter((k) => k === 'fx fx-mote').length, 4, 'four rising motes');
+  controls.clearFx();
+  root.dispatch('pointerdown', pointer(worldUse, 2, 60, 60));
+  kinds = fxKinds(controls);
+  assert.equal(kinds.filter((k) => k === 'fx fx-ring').length, 2, 'two ripple rings');
+  assert.equal(kinds.filter((k) => k === 'fx drip').length, 2, 'two diamond drips');
+});
+
+test('weapon change throws a blade of light between the shoulders', () => {
+  const prev = makeElement('prevWeapon', { left: 0, top: 0, width: 40, height: 40 });
+  const next = makeElement('nextWeapon', { left: 100, top: 0, width: 40, height: 40 });
+  const root = makeElement(null, undefined, {
+    '[data-phone-action="prevWeapon"]': prev,
+    '[data-phone-action="nextWeapon"]': next,
+  });
+  const controls = new PhoneControls(root, {
+    key() {},
+    look() {},
+    move() {},
+  }, { keys: KEYS });
+  controls.attach();
+  root.dispatch('pointerdown', pointer(next, 1, 120, 20));
+  const kinds = fxKinds(controls);
+  assert.equal(kinds.filter((k) => k === 'fx fx-swoop').length, 1, 'one blade of light');
+});
+
+test('pushing the cross kindles sparks off the trace', () => {
+  const { root, controls } = fxControls();
+  const stick = makeElement('stick');
+  root.dispatch('pointerdown', pointer(stick, 1, 60, 60));
+  root.dispatch('pointermove', pointer(stick, 1, 60, 0));
+  const kinds = fxKinds(controls);
+  assert.ok(kinds.some((k) => k === 'fx fx-spark'), 'a spark kindles while pushing');
+});
+
+test('the look surface pours espresso at the rim extremes', () => {
+  const { root, controls } = fxControls();
+  const look = makeElement('look');
+  root.dispatch('pointerdown', pointer(look, 1, 400, 200));
+  root.dispatch('pointermove', pointer(look, 1, 520, 200));
+  const kinds = fxKinds(controls);
+  assert.ok(kinds.some((k) => k === 'fx fx-streak'), 'a streak tears outward past the rim');
+});
+
+test('the breath burns brighter at the rim', () => {
+  const root = makeElement(null);
+  const look = makeElement('look');
+  const breath = makeElement(null);
+  breath.classList.add('on');
+  const controls = new PhoneControls(root, {
+    key() {},
+    look() {},
+    move() {},
+  }, { keys: KEYS });
+  controls.attach();
+  controls.breath = breath;
+  root.dispatch('pointerdown', pointer(look, 1, 400, 200));
+  root.dispatch('pointermove', pointer(look, 1, 520, 200));
+  const b = Number(breath.style.get('--b'));
+  assert.ok(b >= 0.5, `rim excess doubles the pour: --b=${b}`);
+});
+
+test('releaseAll sweeps the flourish stage clean', () => {
+  const { root, controls } = fxControls();
+  const attack = makeElement('attack');
+  root.dispatch('pointerdown', pointer(attack, 1, 60, 60));
+  assert.ok(fxKinds(controls).length > 0, 'flourishes were spawned');
+  controls.releaseAll();
+  assert.equal(fxKinds(controls).length, 0, 'stage swept');
+});
+
+test('reduced motion keeps the flourish stage dark', () => {
+  const prevMatchMedia = globalThis.matchMedia;
+  globalThis.matchMedia = () => ({ matches: true });
+  try {
+    const { root, controls } = fxControls();
+    assert.equal(controls.fxReduced, true);
+    const attack = makeElement('attack');
+    root.dispatch('pointerdown', pointer(attack, 1, 60, 60));
+    assert.equal(fxKinds(controls).length, 0, 'no particles under reduced motion');
+  } finally {
+    if (prevMatchMedia === undefined) delete globalThis.matchMedia;
+    else globalThis.matchMedia = prevMatchMedia;
+  }
 });

@@ -417,17 +417,18 @@
     .phone-menu-control.phone-button { display: none; }
     body[data-touch-menu="true"] .phone-game-control { display: none; }
     body[data-touch-menu="true"] .phone-menu-control.phone-button { display: grid; }
-    /* The mystical cross, small and pressed into the bottom-inline-start
-     * corner. It rests dim and wakes where touched; the arm in the push
-     * direction lights, and the trace follows the finger. Inner visuals
-     * never take the hit test, so the zone's center math stays honest. */
+    /* The mystical cross, pressed into the bottom-inline-start corner.
+     * It rests dim and wakes where touched; the arm in the push direction
+     * lights, and the trace follows the finger. The arms graduate: bright
+     * at the heart, dissolving toward the tips. Inner visuals never take
+     * the hit test, so the zone's center math stays honest. */
     .phone-stick {
       position: absolute;
       inset-inline-start: var(--pad-s);
       bottom: var(--pad-b);
-      width: 8.5rem;
-      height: 8.5rem;
-      opacity: 0.55;
+      width: 9.5rem;
+      height: 9.5rem;
+      opacity: 0.45;
       transition: opacity 0.45s;
     }
     .phone-stick.lit { opacity: 1; }
@@ -445,13 +446,21 @@
       transition: background 0.18s, box-shadow 0.18s;
     }
     .stick-arm.n { left: 50%; top: 4%; transform: translateX(-50%); width: 1.9rem; height: 3.1rem;
-      clip-path: polygon(22% 0, 78% 0, 100% 100%, 0 100%); }
+      clip-path: polygon(22% 0, 78% 0, 100% 100%, 0 100%);
+      -webkit-mask-image: linear-gradient(to top, #000 15%, transparent 95%);
+      mask-image: linear-gradient(to top, #000 15%, transparent 95%); }
     .stick-arm.s { left: 50%; bottom: 4%; transform: translateX(-50%); width: 1.9rem; height: 3.1rem;
-      clip-path: polygon(0 0, 100% 0, 78% 100%, 22% 100%); }
+      clip-path: polygon(0 0, 100% 0, 78% 100%, 22% 100%);
+      -webkit-mask-image: linear-gradient(to bottom, #000 15%, transparent 95%);
+      mask-image: linear-gradient(to bottom, #000 15%, transparent 95%); }
     .stick-arm.w { left: 4%; top: 50%; transform: translateY(-50%); width: 3.1rem; height: 1.9rem;
-      clip-path: polygon(0 22%, 100% 0, 100% 100%, 0 78%); }
+      clip-path: polygon(0 22%, 100% 0, 100% 100%, 0 78%);
+      -webkit-mask-image: linear-gradient(to left, #000 15%, transparent 95%);
+      mask-image: linear-gradient(to left, #000 15%, transparent 95%); }
     .stick-arm.e { right: 4%; top: 50%; transform: translateY(-50%); width: 3.1rem; height: 1.9rem;
-      clip-path: polygon(0 0, 100% 22%, 100% 78%, 0 100%); }
+      clip-path: polygon(0 0, 100% 22%, 100% 78%, 0 100%);
+      -webkit-mask-image: linear-gradient(to right, #000 15%, transparent 95%);
+      mask-image: linear-gradient(to right, #000 15%, transparent 95%); }
     .stick-arm.lit {
       background: rgba(150, 190, 235, 0.38);
       box-shadow: 0 0 26px rgba(150, 200, 255, 0.6);
@@ -539,14 +548,22 @@
       position: absolute;
       inset: -2rem;
       border-radius: 50%;
+      opacity: var(--b, 0);
+    }
+    /* The breathing rides a pseudo-layer so the keyframes never multiply
+     * a custom property — iOS Safari chokes on var() arithmetic there. */
+    .breath-glow::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
       background: radial-gradient(closest-side,
         rgba(150, 200, 255, 0.22), rgba(150, 200, 255, 0.06) 55%, transparent 75%);
-      opacity: var(--b, 0);
       animation: breathGlow 3.6s ease-in-out infinite;
     }
     @keyframes breathGlow {
-      0%, 100% { opacity: calc(var(--b, 0) * 0.7); }
-      50% { opacity: var(--b, 0); }
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
     }
     .breath-thumb-pos {
       position: absolute;
@@ -569,6 +586,78 @@
     @keyframes breathThumb {
       0%, 100% { transform: translate(-50%, -50%) scale(1.05); opacity: 0.42; }
       50% { transform: translate(-50%, -50%) scale(1.27); opacity: 0.64; }
+    }
+    /* ——— transient flourishes: the particle effects ———
+     * A stage above the gems for the mockups' motion vocabulary: surges,
+     * motes, ripples, swoops, drips, kindling sparks, rim streaks. Each
+     * effect moves like its action; all are moonlit, none linger. */
+    .phone-fx-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 30;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .fx {
+      position: absolute;
+      z-index: 1;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+    }
+    /* Little diamonds splash off the key and vanish — a drip, not a flash. */
+    .drip {
+      transform: translate(-50%, -50%) rotate(45deg);
+      border: 1px solid rgba(200, 230, 255, 0.8);
+      background: rgba(150, 190, 235, 0.10);
+    }
+    /* Bright shards rushing toward the game. */
+    .fx-surge {
+      border-radius: 2px;
+      background: linear-gradient(90deg, transparent,
+        rgba(225, 240, 255, 0.9), rgba(170, 205, 250, 0.25));
+      box-shadow: 0 0 8px rgba(170, 205, 250, 0.4);
+    }
+    /* Soft motes that lift and dissolve. */
+    .fx-mote {
+      width: 0.7rem;
+      height: 0.7rem;
+      border-radius: 50%;
+      background: radial-gradient(closest-side, rgba(215, 232, 250, 0.85), transparent 70%);
+    }
+    /* Still water answering a touch. */
+    .fx-ring {
+      width: 3rem;
+      height: 3rem;
+      border-radius: 50%;
+      border: 1px solid rgba(200, 230, 255, 0.6);
+    }
+    /* Kindling sparks off the cross's trace. */
+    .fx-spark {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: radial-gradient(closest-side,
+        rgba(225, 240, 255, 0.95), rgba(170, 205, 250, 0.2) 70%, transparent);
+      box-shadow: 0 0 6px rgba(170, 205, 250, 0.6);
+    }
+    /* Espresso at the look surface's extremes: streaks tearing outward. */
+    .fx-streak {
+      height: 2px;
+      border-radius: 2px;
+      background: linear-gradient(90deg, transparent,
+        rgba(225, 240, 255, 0.85), transparent);
+      box-shadow: 0 0 10px rgba(170, 205, 250, 0.5);
+    }
+    /* The weapon-draw streak: a short blade of light, bright only at the
+     * press, dying almost at once as it leaves the button's area. */
+    .fx-swoop {
+      width: 6rem;
+      height: 3px;
+      border-radius: 2px;
+      background: linear-gradient(to right, transparent,
+        rgba(200, 230, 255, 0.55) 30%, rgba(255, 255, 255, 0.85) 50%,
+        rgba(200, 230, 255, 0.55) 70%, transparent);
+      box-shadow: 0 0 10px rgba(170, 210, 255, 0.5), 0 0 22px rgba(170, 210, 255, 0.2);
     }
     /* The artifact strip: an invisible band along the bottom edge.
      * Sideways swipes scroll the inventory with detents; the game's own
@@ -907,6 +996,7 @@
     @media (prefers-reduced-motion: reduce) {
       button, #drop-zone { transition: none; }
       #launch-button.kindling { animation: none; }
+      .phone-fx-layer { display: none; }
     }
     @media (max-width: 1024px) {
       .shell { grid-template-columns: 1fr; grid-template-rows: auto minmax(18rem, 1fr); }
@@ -1122,6 +1212,7 @@
         <button class="phone-button menu-back phone-menu-control" type="button" data-phone-action="menuBack" aria-label="Go back one menu">Back</button>
         <button class="phone-button menu-select phone-menu-control" type="button" data-phone-action="menuSelect" aria-label="Select menu item">Select</button>
         <button class="phone-button menu-resume phone-menu-control" type="button" data-phone-action="menu" aria-label="Close menu and resume game">Resume</button>
+        <div class="phone-fx-layer" data-phone-fx aria-hidden="true"></div>
       </div>
       <div id="phone-overlay" class="phone-overlay" role="dialog" aria-modal="true" aria-labelledby="phone-overlay-title" aria-hidden="true">
         <div class="phone-overlay-card">
