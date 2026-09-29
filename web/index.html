@@ -379,48 +379,185 @@
       user-select: none;
       touch-action: none;
     }
+    /* ——— THE PANE: the touch controls as etched moonlit glass ——— */
     .phone-stick,
     .phone-look,
-    .phone-button {
+    .phone-strip,
+    .phone-button,
+    .phone-gem {
       pointer-events: auto;
     }
     .phone-menu-control.phone-button { display: none; }
     body[data-touch-menu="true"] .phone-game-control { display: none; }
     body[data-touch-menu="true"] .phone-menu-control.phone-button { display: grid; }
+    /* The mystical cross, small and pressed into the bottom-inline-start
+     * corner. The arms are etched and still; the thumb is the trace that
+     * follows the finger and kindles with deflection. Inner visuals never
+     * take the hit test, so the zone's center math stays honest. */
     .phone-stick {
       position: absolute;
       inset-inline-start: var(--pad-s);
-      bottom: calc(var(--pad-b) + 0.5rem);
-      width: clamp(7.5rem, 30vw, 10rem);
-      height: clamp(7.5rem, 30vw, 10rem);
+      bottom: var(--pad-b);
+      width: 8.5rem;
+      height: 8.5rem;
+      opacity: 0.55;
+    }
+    .phone-stick > * { pointer-events: none; }
+    .stick-arm {
+      position: absolute;
+      border-radius: 999px;
+      background: linear-gradient(160deg, rgba(170, 195, 235, 0.22), rgba(170, 195, 235, 0.07));
+      border: 1px solid rgba(170, 200, 240, 0.25);
+      box-shadow: inset 0 1px 0 rgba(220, 235, 255, 0.14);
+    }
+    .stick-arm.n { left: 50%; top: 4%; transform: translateX(-50%); width: 1.9rem; height: 3.1rem; }
+    .stick-arm.s { left: 50%; bottom: 4%; transform: translateX(-50%); width: 1.9rem; height: 3.1rem; }
+    .stick-arm.w { left: 4%; top: 50%; transform: translateY(-50%); width: 3.1rem; height: 1.9rem; }
+    .stick-arm.e { right: 4%; top: 50%; transform: translateY(-50%); width: 3.1rem; height: 1.9rem; }
+    .stick-heart {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 2rem;
+      height: 2rem;
       border-radius: 50%;
-      border: 2px solid rgba(204, 173, 99, 0.45);
-      background: radial-gradient(circle at 50% 40%, rgba(64, 42, 22, 0.38), rgba(0, 0, 0, 0.5));
-      box-shadow: inset 0 0 28px rgba(0, 0, 0, 0.6), 0 4px 18px rgba(0, 0, 0, 0.4);
+      background: radial-gradient(circle at 50% 40%, rgba(200, 220, 250, 0.35), rgba(200, 220, 250, 0.06));
+      border: 1px solid rgba(170, 200, 240, 0.3);
     }
     .phone-stick::after {
       content: "";
       position: absolute;
-      width: 42%;
-      height: 42%;
-      left: 29%;
-      top: 29%;
+      width: 2.2rem;
+      height: 2.2rem;
+      left: calc(50% - 1.1rem);
+      top: calc(50% - 1.1rem);
       border-radius: 50%;
-      background: radial-gradient(circle at 35% 30%, rgba(255, 222, 160, 0.55), rgba(122, 72, 26, 0.6) 72%);
-      border: 2px solid rgba(232, 196, 120, 0.7);
-      /* --stick-power is the deadzone-rescaled deflection 0..1: the thumb
-       * glows ember-hot at full run. Set by the toolbox, purely visual. */
-      box-shadow: 0 0 calc(var(--stick-power, 0) * 24px) rgba(255, 170, 70, 0.8);
+      background: radial-gradient(circle at 35% 30%, rgba(225, 238, 255, 0.85), rgba(140, 170, 215, 0.5) 70%);
+      border: 1px solid rgba(200, 225, 255, 0.6);
+      /* --stick-power is the deadzone-rescaled deflection 0..1: the trace
+       * kindles moon-bright at full run. Set by the toolbox, purely visual. */
+      box-shadow: 0 0 calc(var(--stick-power, 0) * 26px) rgba(170, 200, 250, 0.75);
       transform: translate(var(--stick-x), var(--stick-y));
     }
     /* The look layer is the whole screen behind the controls: every drag
-     * that is not on a button or the stick turns the camera. No dead
-     * bands between buttons. Buttons and stick are later siblings, so
-     * they win the hit test. */
+     * that is not on a gem, the cross, or the strip turns the camera, and
+     * a quick tap fires. No dead bands between controls. Later siblings
+     * win the hit test. */
     .phone-look {
       position: absolute;
       inset: 0;
     }
+    /* The artifact strip: an invisible band along the bottom edge.
+     * Sideways swipes scroll the inventory with detents; the game's own
+     * bitmap bar flashes the selection, so the strip draws nothing. */
+    .phone-strip {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 3rem;
+    }
+    /* Pressable gems: etched glass, runes only. Cut bright upper-left,
+     * deep bevel below; each rune carries its own moonlight. */
+    .phone-gem {
+      position: absolute;
+      direction: ltr;
+      min-width: 2.75rem;
+      min-height: 2.75rem;
+      display: grid;
+      place-items: center;
+      padding: 0.4rem;
+      border-radius: 999px;
+      color: #d9e6fa;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 1.5rem;
+      line-height: 1;
+      text-shadow: 0 0 10px rgba(190, 222, 255, 0.55);
+      background:
+        linear-gradient(135deg, rgba(228, 244, 255, 0.20) 0%, rgba(228, 244, 255, 0.04) 30%,
+          rgba(120, 160, 205, 0.08) 58%, rgba(198, 226, 255, 0.16) 100%),
+        rgba(130, 170, 215, 0.10);
+      border: 1px solid rgba(190, 220, 250, 0.38);
+      outline: 1px solid rgba(170, 200, 230, 0.18);
+      outline-offset: -5px;
+      box-shadow: 0 0 16px rgba(150, 190, 240, 0.14),
+        inset 0 2px 6px rgba(232, 246, 255, 0.22),
+        inset 0 -4px 10px rgba(12, 32, 62, 0.35);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      transition: transform 0.07s ease-out, box-shadow 0.12s ease-out, background 0.12s ease-out;
+    }
+    .phone-gem:active {
+      transform: scale(0.93);
+      background:
+        linear-gradient(135deg, rgba(228, 244, 255, 0.32) 0%, rgba(228, 244, 255, 0.08) 30%,
+          rgba(150, 190, 235, 0.14) 60%, rgba(198, 226, 255, 0.24) 100%);
+      box-shadow: 0 0 28px rgba(150, 200, 255, 0.4),
+        inset 0 2px 8px rgba(232, 246, 255, 0.3),
+        inset 0 0 14px rgba(200, 230, 255, 0.2);
+    }
+    /* Shoulders: index-finger weapon gems crawling up the sides. */
+    .phone-gem.shoulder-prev,
+    .phone-gem.shoulder-next {
+      top: var(--pad-t);
+      width: 4.6rem;
+      height: 2.3rem;
+      min-width: 4.6rem;
+      min-height: 2.3rem;
+      font-size: 1.15rem;
+    }
+    .phone-gem.shoulder-prev { inset-inline-start: 16%; }
+    .phone-gem.shoulder-next { inset-inline-end: 16%; }
+    /* The right cluster: attack leads tall, the jump pill flanks it wide,
+     * the artifact gem rides above. */
+    .phone-gem.attack {
+      inset-inline-end: var(--pad-e);
+      bottom: calc(var(--pad-b) + 2.2rem);
+      width: 3.4rem;
+      height: 7rem;
+      font-size: 1.7rem;
+    }
+    .phone-gem.jump {
+      inset-inline-end: calc(var(--pad-e) + 4.6rem);
+      bottom: calc(var(--pad-b) + 2.2rem);
+      width: 5.8rem;
+      height: 3.3rem;
+      min-width: 5.8rem;
+      min-height: 3.3rem;
+      font-size: 1.6rem;
+    }
+    .phone-gem.artifact {
+      inset-inline-end: calc(var(--pad-e) + 0.2rem);
+      bottom: calc(var(--pad-b) + 10.4rem);
+      width: 2.75rem;
+      height: 2.75rem;
+    }
+    /* World-use rides above the cross; crouch sits beside it. The crouch
+     * gem crouches with you: its rune sinks while held or latched. */
+    .phone-gem.worlduse {
+      inset-inline-start: var(--pad-s);
+      bottom: calc(var(--pad-b) + 11.8rem);
+      width: 2.75rem;
+      height: 4.8rem;
+      min-height: 4.8rem;
+    }
+    .phone-gem.crouch {
+      inset-inline-start: calc(var(--pad-s) + 9.5rem);
+      bottom: calc(var(--pad-b) + 2.6rem);
+      width: 3.6rem;
+      height: 2.4rem;
+    }
+    .phone-gem.crouch span { display: inline-block; transition: transform 0.25s ease; }
+    .phone-gem.crouch.held span,
+    .phone-gem.crouch.latched span { transform: translateY(0.32rem); }
+    .phone-gem.crouch.held,
+    .phone-gem.crouch.latched {
+      box-shadow: 0 0 28px rgba(150, 200, 255, 0.4),
+        inset 0 6px 14px rgba(12, 32, 62, 0.5);
+    }
+    /* Menu-mode buttons wear the same moonlit glass; their labels stay
+     * readable — the runes-only rule is for the gameplay controls. */
     .phone-button {
       position: absolute;
       direction: ltr;
@@ -430,31 +567,31 @@
       place-items: center;
       padding: 0.4rem;
       border-radius: 999px;
-      background: radial-gradient(circle at 50% 35%, rgba(76, 53, 29, 0.74), rgba(8, 6, 4, 0.68));
-      border: 2px solid rgba(204, 173, 99, 0.55);
-      color: #f4e8cf;
+      background:
+        linear-gradient(135deg, rgba(228, 244, 255, 0.20) 0%, rgba(228, 244, 255, 0.04) 30%,
+          rgba(120, 160, 205, 0.08) 58%, rgba(198, 226, 255, 0.16) 100%),
+        rgba(130, 170, 215, 0.10);
+      border: 1px solid rgba(190, 220, 250, 0.38);
+      color: #d9e6fa;
       font-family: Georgia, 'Times New Roman', serif;
       font-weight: 700;
       font-size: clamp(1.25rem, 2vw, 1.8rem);
       line-height: 1;
-      text-shadow: 0 1px 3px black;
-      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 230, 180, 0.16);
+      text-shadow: 0 0 10px rgba(190, 222, 255, 0.5);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45),
+        inset 0 2px 6px rgba(232, 246, 255, 0.22),
+        inset 0 -4px 10px rgba(12, 32, 62, 0.35);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
       transition: transform 0.06s ease-out, box-shadow 0.06s ease-out;
     }
     .phone-button:active {
       transform: scale(0.92);
-      background: radial-gradient(circle at 50% 35%, rgba(154, 88, 32, 0.85), rgba(42, 19, 6, 0.75));
-      box-shadow: 0 0 26px rgba(255, 160, 60, 0.55), inset 0 1px 0 rgba(255, 230, 180, 0.25);
-    }
-    /* Primary action cluster, bottom inline-end corner. One anchor, one
-     * gap language: attack leads, jump and use flank it. Text labels
-     * stay compact so the buttons read as controls, not billboards. */
-    .phone-button.attack {
-      inset-inline-end: var(--pad-e);
-      bottom: calc(var(--pad-b) + 4.75rem);
-      width: 5rem;
-      height: 5rem;
-      font-size: clamp(1.1rem, 1.8vw, 1.5rem);
+      background:
+        linear-gradient(135deg, rgba(228, 244, 255, 0.32) 0%, rgba(228, 244, 255, 0.08) 30%,
+          rgba(150, 190, 235, 0.14) 60%, rgba(198, 226, 255, 0.24) 100%);
+      box-shadow: 0 0 26px rgba(150, 200, 255, 0.4),
+        inset 0 2px 8px rgba(232, 246, 255, 0.3);
     }
     /* Menu-mode trio: three matched buttons in the cluster slots. */
     .phone-button.menu-back {
@@ -464,7 +601,6 @@
       height: 4rem;
       font-size: clamp(0.95rem, 1.5vw, 1.25rem);
     }
-    .phone-button.jump,
     .phone-button.menu-select {
       inset-inline-end: calc(var(--pad-e) + 5rem);
       bottom: calc(var(--pad-b) + 0.5rem);
@@ -472,7 +608,6 @@
       height: 4rem;
       font-size: clamp(0.95rem, 1.5vw, 1.25rem);
     }
-    .phone-button.use,
     .phone-button.menu-resume {
       inset-inline-end: var(--pad-e);
       bottom: var(--pad-b);
@@ -480,18 +615,6 @@
       height: 4rem;
       font-size: clamp(0.95rem, 1.5vw, 1.25rem);
     }
-    /* Weapon switch: a horizontal pair riding just above the cluster. */
-    .phone-button.prev,
-    .phone-button.next {
-      width: 3rem;
-      height: 3rem;
-      min-width: 3rem;
-      min-height: 3rem;
-      font-size: 0.8rem;
-      bottom: calc(var(--pad-b) + 10.25rem);
-    }
-    .phone-button.prev { inset-inline-end: calc(var(--pad-e) + 3.25rem); }
-    .phone-button.next { inset-inline-end: var(--pad-e); }
     /* Menu-mode d-pad: a diamond sitting where the stick lives. */
     .phone-button.menu-forward,
     .phone-button.menu-down,
@@ -831,17 +954,26 @@
       <div class="canvas-hint">Tap/click the canvas to focus input. On platforms without Pointer Lock (notably iPadOS Safari), mouselook remains limited.</div>
       <button id="phone-menu-button" class="phone-top-button" type="button" aria-label="Open in-game menu">☰</button>
       <div id="phone-controls" class="phone-controls" aria-label="Touch controls">
-        <div class="phone-look phone-game-control" data-phone-action="look" aria-label="Drag to look"></div>
-        <div class="phone-stick phone-game-control" data-phone-action="stick" aria-label="Move forward, back, left, and right"></div>
+        <div class="phone-look phone-game-control" data-phone-action="look" aria-label="Look: drag to turn, tap to attack"></div>
+        <div class="phone-strip phone-game-control" data-phone-action="swipe" data-detent-left="artifactNext" data-detent-right="artifactPrev" aria-label="Swipe sideways to change artifact"></div>
+        <div class="phone-stick phone-game-control" data-phone-action="stick" aria-label="Move: push gently to walk, shove to run">
+          <span class="stick-arm n" aria-hidden="true"></span>
+          <span class="stick-arm e" aria-hidden="true"></span>
+          <span class="stick-arm s" aria-hidden="true"></span>
+          <span class="stick-arm w" aria-hidden="true"></span>
+          <span class="stick-heart" aria-hidden="true"></span>
+        </div>
+        <button class="phone-gem shoulder-prev phone-game-control" type="button" data-phone-action="prevWeapon" aria-label="Previous weapon">ᛁ</button>
+        <button class="phone-gem shoulder-next phone-game-control" type="button" data-phone-action="nextWeapon" aria-label="Next weapon">ᛊ</button>
+        <button class="phone-gem attack phone-game-control" type="button" data-phone-action="attack" aria-label="Attack">ᛏ</button>
+        <button class="phone-gem jump phone-game-control" type="button" data-phone-action="jump" aria-label="Jump">ᚢ</button>
+        <button class="phone-gem artifact phone-game-control" type="button" data-phone-action="use" aria-label="Use selected artifact">ᛈ</button>
+        <button class="phone-gem worlduse phone-game-control" type="button" data-phone-action="worldUse" aria-label="Use">ᚷ</button>
+        <button class="phone-gem crouch phone-game-control" type="button" data-phone-action="crouch" data-phone-latch aria-label="Crouch: tap to toggle, hold to duck"><span>ᚾ</span></button>
         <button class="phone-button menu-forward phone-menu-control" type="button" data-phone-action="forward" aria-label="Move menu cursor up">▲&#xFE0E;</button>
         <button class="phone-button menu-left phone-menu-control" type="button" data-phone-action="left" aria-label="Move menu cursor left">◀&#xFE0E;</button>
         <button class="phone-button menu-right phone-menu-control" type="button" data-phone-action="right" aria-label="Move menu cursor right">▶&#xFE0E;</button>
         <button class="phone-button menu-down phone-menu-control" type="button" data-phone-action="back" aria-label="Move menu cursor down">▼&#xFE0E;</button>
-        <button class="phone-button attack phone-game-control" type="button" data-phone-action="attack" aria-label="Attack">Atk</button>
-        <button class="phone-button jump phone-game-control" type="button" data-phone-action="jump" aria-label="Jump">Jump</button>
-        <button class="phone-button use phone-game-control" type="button" data-phone-action="use" aria-label="Use or interact">Use</button>
-        <button class="phone-button prev phone-game-control" type="button" data-phone-action="prevWeapon" aria-label="Previous weapon">◀&#xFE0E;</button>
-        <button class="phone-button next phone-game-control" type="button" data-phone-action="nextWeapon" aria-label="Next weapon">▶&#xFE0E;</button>
         <button class="phone-button menu-back phone-menu-control" type="button" data-phone-action="menuBack" aria-label="Go back one menu">Back</button>
         <button class="phone-button menu-select phone-menu-control" type="button" data-phone-action="menuSelect" aria-label="Select menu item">Select</button>
         <button class="phone-button menu-resume phone-menu-control" type="button" data-phone-action="menu" aria-label="Close menu and resume game">Resume</button>

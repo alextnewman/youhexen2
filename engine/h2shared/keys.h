@@ -142,6 +142,10 @@
 #define	K_TOUCH_MENU_SELECT		281
 #define	K_TOUCH_NEXT_WEAPON		282
 #define	K_TOUCH_PREV_WEAPON		283
+#define	K_TOUCH_WORLD_USE		284
+#define	K_TOUCH_CROUCH			285
+#define	K_TOUCH_ARTIFACT_PREV	286
+#define	K_TOUCH_ARTIFACT_NEXT	287
 
 //
 // mouse buttons generate virtual keys
@@ -210,7 +214,7 @@
 
 typedef int keydest_t;
 
-#define	MAX_KEYS		284	/* K_TOUCH_PREV_WEAPON + 1 */
+#define	MAX_KEYS		288	/* K_TOUCH_ARTIFACT_NEXT + 1 */
 
 extern	char	*keybindings[MAX_KEYS];
 extern	char	*doublebindings[MAX_KEYS];

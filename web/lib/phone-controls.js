@@ -13,8 +13,12 @@
  *   bridge.move(x, y)          analog stick vector, -1..1 per axis,
  *                              y positive = pull toward the player (back)
  *
- * Actions: 'stick' and 'look' are the two analog zones; everything in
- * BUTTON_ACTIONS is a digital button resolved through options.keys.
+ * Actions: 'stick' and 'look' are the two analog zones; 'swipe' is a
+ * horizontal detent zone (its prev/next actions come from data-detent-*
+ * attributes); everything in BUTTON_ACTIONS is a digital button resolved
+ * through options.keys. A button carrying data-phone-latch becomes a
+ * latchable hold: tap toggles a virtual hold, press-and-hold past
+ * latchHoldMs holds physically, release gets latchGraceMs.
  */
 
 export const DEFAULT_PHONE_CONTROL_OPTIONS = Object.freeze({
@@ -32,13 +36,40 @@ export const DEFAULT_PHONE_CONTROL_OPTIONS = Object.freeze({
   maxLookDelta: 512,
   haptics: true,
   hapticDurationMs: 8,
+  /* Tap the look surface — quick and unmoved — to fire without the thumb
+   * ever leaving the glass. lookTapAction names a BUTTON_ACTION resolved
+   * through keys; falsy disables. */
+  lookTapAction: 'attack',
+  lookTapMaxMs: 350,
+  lookTapMaxPx: 12,
+  /* Past the rim the look surface is a joystick, not a cursor: deflection
+   * from the touch-down anchor becomes continuous angular velocity, so the
+   * view keeps slewing while the thumb rests at the edge. lookRim is the
+   * deflection fraction of lookRadius where the slew starts; lookRimRate
+   * is bridge-look units per second at full past-rim deflection, scaled by
+   * lookSensitivity. Drag deltas keep flowing underneath for fine work. */
+  lookRadius: 120,
+  lookRim: 0.65,
+  lookRimRate: 1100,
+  /* A detent swipe zone (the artifact strip): every detentStepPx of
+   * horizontal travel fires the named action's key once. Swipe left fires
+   * data-detent-left, swipe right fires data-detent-right; a
+   * vertical-dominant drag is not a scroll. */
+  detentStepPx: 48,
+  /* A latchable button (crouch): a quick tap toggles a virtual hold, a
+   * press held past latchHoldMs crouches physically, and release gets
+   * latchGraceMs so touch jitter never stands you up. */
+  latchHoldMs: 500,
+  latchGraceMs: 80,
   keys: Object.freeze({}),
 });
 
 const BUTTON_ACTIONS = new Set([
   'forward', 'back', 'left', 'right',
-  'attack', 'jump', 'use', 'menu', 'menuBack', 'menuSelect',
+  'attack', 'jump', 'use', 'worldUse', 'crouch',
+  'menu', 'menuBack', 'menuSelect',
   'nextWeapon', 'prevWeapon',
+  'artifactPrev', 'artifactNext',
 ]);
 
 const MOVE_EPSILON = 1e-3;
@@ -53,6 +84,25 @@ function eventPoint(event) {
 
 function actionForTarget(target) {
   return target?.closest?.('[data-phone-action]')?.dataset?.phoneAction ?? target?.dataset?.phoneAction ?? null;
+}
+
+function elementForTarget(target) {
+  return target?.closest?.('[data-phone-action]') ?? null;
+}
+
+/* rAF indirection: the rim-slew loop degrades gracefully where there is no
+ * frame scheduler (and stays drivable in tests). */
+function nextFrame(callback) {
+  if (typeof globalThis.requestAnimationFrame === 'function') {
+    return globalThis.requestAnimationFrame(callback);
+  }
+  return 0;
+}
+
+function cancelFrame(id) {
+  if (id && typeof globalThis.cancelAnimationFrame === 'function') {
+    globalThis.cancelAnimationFrame(id);
+  }
 }
 
 function rectCenter(element, fallback) {
@@ -86,6 +136,13 @@ export class PhoneControls {
     this.lastLookTime = null;
     this.lookSpeed = null;
     this.moveVector = { x: 0, y: 0 };
+    /* Latchable holds: action -> { latched, key, element }. The toggle
+     * outlives any one pointer; releaseAll stands everything back up. */
+    this.latches = new Map();
+    /* Pending physical-hold release grace: action -> { timer, key, element }. */
+    this.latchGrace = new Map();
+    /* Rim-slew loop handle while a look pointer rests past the rim. */
+    this.rimRaf = 0;
 
     this.bound = {
       pointerdown: (event) => this.onPointerDown(event),
@@ -134,7 +191,8 @@ export class PhoneControls {
 
   onPointerDown(event) {
     if (!this.enabled || !this.root) return;
-    const action = actionForTarget(event.target);
+    const element = elementForTarget(event.target);
+    const action = element?.dataset?.phoneAction ?? event.target?.dataset?.phoneAction ?? null;
     if (!action) return;
     if ([...this.pointerOwners.values()].some((owner) => owner.action === action)) return;
 
@@ -150,15 +208,66 @@ export class PhoneControls {
     }
 
     if (action === 'look') {
-      this.pointerOwners.set(event.pointerId, { type: 'look', action });
-      this.lastLookPoint = eventPoint(event);
+      const point = eventPoint(event);
+      this.pointerOwners.set(event.pointerId, {
+        type: 'look',
+        action,
+        anchor: point,
+        downX: point.x,
+        downY: point.y,
+        downT: typeof event.timeStamp === 'number' ? event.timeStamp : null,
+        moved: false,
+        rimActive: false,
+        rimDX: 0,
+        rimDY: 0,
+      });
+      this.lastLookPoint = point;
       this.lastLookTime = typeof event.timeStamp === 'number' ? event.timeStamp : null;
       this.lookSpeed = 0;
       return;
     }
 
+    if (action === 'swipe') {
+      const point = eventPoint(event);
+      this.pointerOwners.set(event.pointerId, {
+        type: 'swipe',
+        action,
+        startX: point.x,
+        startY: point.y,
+        lastStep: 0,
+        leftAction: element?.dataset?.detentLeft ?? null,
+        rightAction: element?.dataset?.detentRight ?? null,
+      });
+      return;
+    }
+
     if (BUTTON_ACTIONS.has(action)) {
       const key = this.keys[action];
+      /* A latchable button (crouch): the key stays down while latched or
+       * physically held. A tap toggles the virtual hold; a press held past
+       * latchHoldMs holds physically; release gets latchGraceMs. */
+      if (element?.dataset?.phoneLatch !== undefined) {
+        this.cancelLatchGrace(action);
+        let entry = this.latches.get(action);
+        if (!entry) {
+          entry = { latched: false, key, element };
+          this.latches.set(action, entry);
+        } else {
+          entry.key = key;
+          entry.element = element;
+        }
+        const owner = { type: 'latch', action, key, element, held: false, holdTimer: 0 };
+        this.pointerOwners.set(event.pointerId, owner);
+        owner.holdTimer = setTimeout(() => {
+          if (this.pointerOwners.get(event.pointerId) !== owner) return;
+          owner.held = true;
+          owner.holdTimer = 0;
+          if (owner.key) this.pressKey(owner.key);
+          owner.element?.classList?.add('held');
+          buzz(this.options.haptics, 8);
+        }, this.options.latchHoldMs);
+        return;
+      }
       this.pointerOwners.set(event.pointerId, { type: 'button', action, key });
       if (key) {
         this.pressKey(key);
@@ -175,6 +284,30 @@ export class PhoneControls {
 
     if (owner.type === 'stick') {
       this.updateStick(event);
+      return;
+    }
+    if (owner.type === 'swipe') {
+      const point = eventPoint(event);
+      const dx = point.x - owner.startX;
+      const dy = point.y - owner.startY;
+      /* A vertical-dominant drag is not a scroll. */
+      if (Math.abs(dy) > Math.abs(dx) * 1.2) return;
+      const step = Math.trunc(dx / this.options.detentStepPx);
+      if (step !== owner.lastStep) {
+        const dir = Math.sign(step - owner.lastStep);
+        const actionName = dir < 0 ? owner.leftAction : owner.rightAction;
+        const key = actionName ? this.keys[actionName] : undefined;
+        /* Fire once per crossed detent so a fling never swallows ticks. */
+        const ticks = Math.abs(step - owner.lastStep);
+        for (let i = 0; i < ticks; i += 1) {
+          if (key) {
+            this.pressKey(key);
+            this.releaseKey(key);
+          }
+        }
+        if (key) buzz(this.options.haptics, 5);
+        owner.lastStep = step;
+      }
       return;
     }
     if (owner.type === 'look') {
@@ -210,6 +343,27 @@ export class PhoneControls {
         if (dx || dy) this.bridge.look(dx, dy);
       }
       this.lastLookPoint = point;
+      /* Tap-to-fire watches for an unmoved touch; the rim watches for a
+       * thumb parked past it. Both read the touch-down anchor. */
+      if (Math.hypot(point.x - owner.downX, point.y - owner.downY) > this.options.lookTapMaxPx) {
+        owner.moved = true;
+      }
+      const rim = this.options.lookRim;
+      const rx = (point.x - owner.anchor.x) / this.options.lookRadius;
+      const ry = (point.y - owner.anchor.y) / this.options.lookRadius;
+      const mag = Math.hypot(rx, ry);
+      if (mag > rim && rim < 1) {
+        const excess = Math.min(1, (mag - rim) / (1 - rim));
+        owner.rimDX = (rx / mag) * excess;
+        owner.rimDY = (ry / mag) * excess;
+        owner.rimActive = true;
+        this.ensureRimLoop();
+      } else if (owner.rimActive) {
+        owner.rimActive = false;
+        owner.rimDX = 0;
+        owner.rimDY = 0;
+        this.stopRimLoop();
+      }
     }
   }
 
@@ -231,8 +385,100 @@ export class PhoneControls {
       this.lastLookPoint = null;
       this.lastLookTime = null;
       this.lookSpeed = null;
+      if (owner.rimActive) {
+        owner.rimActive = false;
+        owner.rimDX = 0;
+        owner.rimDY = 0;
+        this.stopRimLoop();
+      }
+      this.maybeTapFire(owner, event);
+    } else if (owner.type === 'swipe') {
+      /* Detents fire on the move; release is just the door closing. */
+    } else if (owner.type === 'latch') {
+      if (owner.holdTimer) {
+        clearTimeout(owner.holdTimer);
+        owner.holdTimer = 0;
+      }
+      if (owner.held) {
+        /* A physical hold gets its release grace so touch jitter never
+         * stands you up mid-duck; a latch underneath stays standing. */
+        const timer = setTimeout(() => {
+          this.latchGrace.delete(owner.action);
+          const entry = this.latches.get(owner.action);
+          if ((!entry || !entry.latched) && owner.key) this.releaseKey(owner.key);
+          owner.element?.classList?.remove('held');
+        }, this.options.latchGraceMs);
+        this.latchGrace.set(owner.action, { timer, key: owner.key, element: owner.element });
+      } else {
+        /* A quick tap toggles the virtual hold. */
+        const entry = this.latches.get(owner.action);
+        this.setLatched(owner.action, !(entry?.latched ?? false));
+        buzz(this.options.haptics, 14);
+      }
     } else if (owner.type === 'button' && owner.key) {
       this.releaseKey(owner.key);
+    }
+  }
+
+  /* A quick, unmoved touch on the look surface fires without the thumb
+   * ever leaving the glass. */
+  maybeTapFire(owner, event) {
+    if (owner.moved) return;
+    if (typeof owner.downT !== 'number' || typeof event.timeStamp !== 'number') return;
+    if (event.timeStamp - owner.downT > this.options.lookTapMaxMs) return;
+    const action = this.options.lookTapAction;
+    const key = action ? this.keys[action] : undefined;
+    if (!key) return;
+    this.pressKey(key);
+    this.releaseKey(key);
+    buzz(this.options.haptics, this.options.hapticDurationMs);
+  }
+
+  /* Past the rim the look surface slews continuously: a rAF loop emits
+   * angular velocity from the parked deflection until the thumb lifts or
+   * drifts back inside. */
+  ensureRimLoop() {
+    if (this.rimRaf || !this.enabled) return;
+    let last = null;
+    const step = (now) => {
+      this.rimRaf = 0;
+      if (!this.enabled) return;
+      const owner = [...this.pointerOwners.values()].find((o) => o.type === 'look' && o.rimActive);
+      if (!owner) return;
+      const nowMs = typeof now === 'number' ? now : 16;
+      const lastMs = typeof last === 'number' ? last : nowMs - 16;
+      const dt = Math.min(0.05, Math.max(0, (nowMs - lastMs) / 1000));
+      last = nowMs;
+      const rate = this.options.lookRimRate * this.options.lookSensitivity;
+      const dx = owner.rimDX * rate * dt;
+      const dy = owner.rimDY * rate * dt;
+      if (dx || dy) this.bridge.look(dx, dy);
+      this.rimRaf = nextFrame(step);
+    };
+    this.rimRaf = nextFrame(step);
+  }
+
+  stopRimLoop() {
+    cancelFrame(this.rimRaf);
+    this.rimRaf = 0;
+  }
+
+  setLatched(action, latched) {
+    const entry = this.latches.get(action);
+    if (!entry) return;
+    entry.latched = latched;
+    if (entry.key) {
+      if (latched) this.pressKey(entry.key);
+      else this.releaseKey(entry.key);
+    }
+    entry.element?.classList?.toggle('latched', latched);
+  }
+
+  cancelLatchGrace(action) {
+    const pending = this.latchGrace.get(action);
+    if (pending) {
+      clearTimeout(pending.timer);
+      this.latchGrace.delete(action);
     }
   }
 
@@ -294,6 +540,21 @@ export class PhoneControls {
   }
 
   releaseAll() {
+    this.stopRimLoop();
+    for (const owner of this.pointerOwners.values()) {
+      if (owner.type === 'latch') {
+        if (owner.holdTimer) clearTimeout(owner.holdTimer);
+        owner.element?.classList?.remove('held');
+      }
+    }
+    for (const pending of this.latchGrace.values()) {
+      clearTimeout(pending.timer);
+      pending.element?.classList?.remove('held');
+    }
+    this.latchGrace.clear();
+    /* A clean slate stands every virtual hold back up. */
+    for (const action of [...this.latches.keys()]) this.setLatched(action, false);
+    this.latches.clear();
     this.pointerOwners.clear();
     this.emitMove(0, 0);
     for (const key of [...this.heldKeys]) {

@@ -295,6 +295,10 @@ test('gameplay controls use movement and action bindings that match their labels
     attack: HEXEN_TOUCH_KEYCODES.attack,
     jump: HEXEN_TOUCH_KEYCODES.jump,
     use: HEXEN_TOUCH_KEYCODES.use,
+    worldUse: HEXEN_TOUCH_KEYCODES.worldUse,
+    crouch: HEXEN_TOUCH_KEYCODES.crouch,
+    artifactPrev: HEXEN_TOUCH_KEYCODES.artifactPrev,
+    artifactNext: HEXEN_TOUCH_KEYCODES.artifactNext,
   }, {
     forward: 272, // K_TOUCH_FORWARD
     back: 273, // K_TOUCH_BACK
@@ -303,6 +307,10 @@ test('gameplay controls use movement and action bindings that match their labels
     attack: 276, // K_TOUCH_ATTACK
     jump: 277, // K_TOUCH_JUMP
     use: 278, // K_TOUCH_USE
+    worldUse: 284, // K_TOUCH_WORLD_USE
+    crouch: 285, // K_TOUCH_CROUCH
+    artifactPrev: 286, // K_TOUCH_ARTIFACT_PREV
+    artifactNext: 287, // K_TOUCH_ARTIFACT_NEXT
   });
 });
 
@@ -362,11 +370,16 @@ test('phone mode DOM includes playing layout, touch visibility rules, and quit h
   assert.match(html, /id="phone-exit-button"/);
   assert.match(html, /data-touch-only="true"/);
   assert.match(html, /data-phone-mode="true"/);
-  assert.match(html, /data-phone-action="jump"[^>]*>Jump<\/button>/);
-  assert.match(html, /data-phone-action="attack"[^>]*>Atk<\/button>/);
-  assert.match(html, /data-phone-action="use"[^>]*>Use<\/button>/);
-  assert.match(html, /data-phone-action="prevWeapon"[^>]*>◀&#xFE0E;<\/button>/);
-  assert.match(html, /data-phone-action="nextWeapon"[^>]*>▶&#xFE0E;<\/button>/);
+  assert.match(html, /data-phone-action="jump"[^>]*>ᚢ<\/button>/);
+  assert.match(html, /data-phone-action="attack"[^>]*>ᛏ<\/button>/);
+  assert.match(html, /data-phone-action="use"[^>]*>ᛈ<\/button>/);
+  assert.match(html, /data-phone-action="worldUse"[^>]*>ᚷ<\/button>/);
+  assert.match(html, /data-phone-action="crouch"[^>]*data-phone-latch[^>]*><span>ᚾ<\/span><\/button>/);
+  assert.match(html, /data-phone-action="prevWeapon"[^>]*>ᛁ<\/button>/);
+  assert.match(html, /data-phone-action="nextWeapon"[^>]*>ᛊ<\/button>/);
+  assert.match(html, /data-phone-action="swipe"[^>]*data-detent-left="artifactNext"[^>]*data-detent-right="artifactPrev"/);
+  assert.match(html, /class="stick-arm n"/);
+  assert.match(html, /class="stick-heart"/);
   assert.doesNotMatch(html, /phone-game-control[^>]*data-phone-action="menu"/,
     'the hamburger already sends the engine menu key; no second menu button');
   assert.match(html, /data-phone-action="forward"[^>]*>▲&#xFE0E;<\/button>/);
@@ -390,7 +403,7 @@ test('phone mode DOM includes playing layout, touch visibility rules, and quit h
   assert.match(app, /gamepadconnected/);
   assert.match(app, /hexenwailquit/);
   assert.match(app, /Web_ResizeCanvas/);
-  assert.match(html, /\.phone-button\.prev,[\s\S]*?\.phone-button\.next \{[\s\S]*?width: 3rem;/);
+  assert.match(html, /\.phone-gem\.shoulder-prev,[\s\S]*?\.phone-gem\.shoulder-next \{[\s\S]*?width: 4\.6rem;/);
   assert.match(app, /const hadController = Boolean\(navigator\.serviceWorker\.controller\)/);
   assert.match(app, /addEventListener\('pageshow', checkForServiceWorkerUpdate\)/);
   assert.equal([...app.matchAll(/startEngineFromUserAction\(/g)].length, 2,
@@ -519,4 +532,241 @@ test('touch-control auto detection depends on pointer capability, not viewport s
     'a bare iPad is as touch-only as a phone, so screen size must not gate touch controls');
   assert.match(body, /any-pointer: coarse/);
   assert.match(body, /hasConnectedGamepad\(\)/);
+});
+
+/* ——— THE PANE: tap-to-fire, rim slew, detents, and latchable holds ——— */
+
+function stubRaf() {
+  const queue = [];
+  const prevRaf = globalThis.requestAnimationFrame;
+  const prevCancel = globalThis.cancelAnimationFrame;
+  globalThis.requestAnimationFrame = (cb) => { queue.push(cb); return queue.length; };
+  globalThis.cancelAnimationFrame = (id) => { queue.splice(id - 1, 1); };
+  return {
+    run(now) { for (const cb of queue.splice(0)) cb(now); },
+    restore() {
+      if (prevRaf === undefined) delete globalThis.requestAnimationFrame;
+      else globalThis.requestAnimationFrame = prevRaf;
+      if (prevCancel === undefined) delete globalThis.cancelAnimationFrame;
+      else globalThis.cancelAnimationFrame = prevCancel;
+    },
+  };
+}
+
+function latchElement(action = 'crouch') {
+  const el = makeElement(action);
+  el.dataset.phoneLatch = '';
+  const classes = new Set();
+  el.classList = {
+    add: (c) => classes.add(c),
+    remove: (c) => classes.delete(c),
+    toggle: (c, force) => {
+      if (force === undefined) { if (classes.has(c)) classes.delete(c); else classes.add(c); }
+      else if (force) classes.add(c);
+      else classes.delete(c);
+    },
+  };
+  el.hasClass = (c) => classes.has(c);
+  return el;
+}
+
+function swipeElement() {
+  const el = makeElement('swipe');
+  el.dataset.detentLeft = 'artifactNext';
+  el.dataset.detentRight = 'artifactPrev';
+  return el;
+}
+
+test('a quick unmoved look tap fires the attack key without turning the camera', () => {
+  const root = makeElement(null);
+  const look = makeElement('look');
+  const keys = [];
+  const looks = [];
+  const controls = new PhoneControls(root, {
+    key: (k, d) => keys.push([k, d]),
+    look: (dx, dy) => looks.push([dx, dy]),
+  }, { keys: KEYS });
+  controls.attach();
+
+  root.dispatch('pointerdown', tpointer(look, 1, 50, 50, 1000));
+  root.dispatch('pointerup', tpointer(look, 1, 50, 50, 1100));
+
+  assert.deepEqual(looks, [], 'no drag deltas on an unmoved tap');
+  assert.deepEqual(keys, [[KEYS.attack, true], [KEYS.attack, false]]);
+});
+
+test('a look tap is ignored when the thumb moves or lingers', () => {
+  const root = makeElement(null);
+  const look = makeElement('look');
+  const keys = [];
+  const controls = new PhoneControls(root, { key: (k, d) => keys.push([k, d]), look() {} }, { keys: KEYS });
+  controls.attach();
+
+  // moved past the tap slop: a drag, not a tap
+  root.dispatch('pointerdown', tpointer(look, 1, 50, 50, 1000));
+  root.dispatch('pointermove', tpointer(look, 1, 80, 50, 1016));
+  root.dispatch('pointerup', tpointer(look, 1, 80, 50, 1100));
+  // unmoved but held past the tap window: a press, not a tap
+  root.dispatch('pointerdown', tpointer(look, 2, 50, 50, 2000));
+  root.dispatch('pointerup', tpointer(look, 2, 50, 50, 2600));
+
+  assert.deepEqual(keys, []);
+});
+
+test('the look surface slews continuously past the rim and stops on release', () => {
+  const raf = stubRaf();
+  try {
+    const root = makeElement(null);
+    const look = makeElement('look');
+    const looks = [];
+    const controls = new PhoneControls(root, {
+      key() {},
+      look: (dx, dy) => looks.push([dx, dy]),
+    }, { keys: KEYS, lookAccel: 0, lookSensitivity: 1, lookRim: 0.65, lookRimRate: 1000, lookRadius: 120 });
+    controls.attach();
+
+    root.dispatch('pointerdown', tpointer(look, 1, 0, 0, 1000));
+    // park the thumb 100px right of touch-down: 0.83 deflection, past the 0.65 rim
+    root.dispatch('pointermove', tpointer(look, 1, 100, 0, 1016));
+    assert.ok(looks.length >= 1, 'the drag itself still turns the camera');
+    const before = looks.length;
+    raf.run(1032);
+    assert.ok(looks.length > before, 'the parked thumb slews on its own');
+    const [slewX] = looks[looks.length - 1];
+    assert.ok(slewX > 0, 'the slew follows the parked deflection');
+
+    root.dispatch('pointerup', tpointer(look, 1, 100, 0, 1100));
+    const afterUp = looks.length;
+    raf.run(1116);
+    assert.equal(looks.length, afterUp, 'lifting the thumb stops the slew');
+  } finally {
+    raf.restore();
+  }
+});
+
+test('the artifact strip fires one key tap per crossed detent', () => {
+  const root = makeElement(null);
+  const strip = swipeElement();
+  const keys = [];
+  const controls = new PhoneControls(root, { key: (k, d) => keys.push([k, d]), look() {} },
+    { keys: KEYS, detentStepPx: 48 });
+  controls.attach();
+
+  // 100px left crosses two 48px detents
+  root.dispatch('pointerdown', pointer(strip, 1, 200, 10));
+  root.dispatch('pointermove', pointer(strip, 1, 100, 10));
+  assert.deepEqual(keys, [
+    [KEYS.artifactNext, true], [KEYS.artifactNext, false],
+    [KEYS.artifactNext, true], [KEYS.artifactNext, false],
+  ]);
+
+  // right crosses back toward previous
+  root.dispatch('pointermove', pointer(strip, 1, 148, 10));
+  assert.deepEqual(keys.at(-2), [KEYS.artifactPrev, true]);
+  assert.deepEqual(keys.at(-1), [KEYS.artifactPrev, false]);
+
+  root.dispatch('pointerup', pointer(strip, 1, 148, 10));
+});
+
+test('the artifact strip ignores taps and vertical-dominant drags', () => {
+  const root = makeElement(null);
+  const strip = swipeElement();
+  const keys = [];
+  const controls = new PhoneControls(root, { key: (k, d) => keys.push([k, d]), look() {} },
+    { keys: KEYS, detentStepPx: 48 });
+  controls.attach();
+
+  root.dispatch('pointerdown', pointer(strip, 1, 200, 10));
+  root.dispatch('pointerup', pointer(strip, 1, 200, 10));
+
+  root.dispatch('pointerdown', pointer(strip, 2, 200, 10));
+  root.dispatch('pointermove', pointer(strip, 2, 200, 150));
+  root.dispatch('pointerup', pointer(strip, 2, 200, 150));
+
+  assert.deepEqual(keys, []);
+});
+
+test('a crouch tap toggles a virtual hold; a second tap stands it up', async () => {
+  const root = makeElement(null);
+  const crouch = latchElement();
+  const keys = [];
+  const controls = new PhoneControls(root, { key: (k, d) => keys.push([k, d]), look() {} },
+    { keys: KEYS, latchHoldMs: 40, latchGraceMs: 20 });
+  controls.attach();
+
+  root.dispatch('pointerdown', pointer(crouch, 1, 0, 0));
+  await new Promise((r) => setTimeout(r, 10));
+  root.dispatch('pointerup', pointer(crouch, 1, 0, 0));
+  assert.deepEqual(keys, [[KEYS.crouch, true]]);
+  assert.ok(crouch.hasClass('latched'), 'the gem shows its latched state');
+
+  root.dispatch('pointerdown', pointer(crouch, 2, 0, 0));
+  await new Promise((r) => setTimeout(r, 10));
+  root.dispatch('pointerup', pointer(crouch, 2, 0, 0));
+  assert.deepEqual(keys, [[KEYS.crouch, true], [KEYS.crouch, false]]);
+  assert.ok(!crouch.hasClass('latched'));
+  controls.detach();
+});
+
+test('a crouch hold past the threshold ducks physically, with release grace', async () => {
+  const root = makeElement(null);
+  const crouch = latchElement();
+  const keys = [];
+  const controls = new PhoneControls(root, { key: (k, d) => keys.push([k, d]), look() {} },
+    { keys: KEYS, latchHoldMs: 40, latchGraceMs: 30 });
+  controls.attach();
+
+  root.dispatch('pointerdown', pointer(crouch, 1, 0, 0));
+  await new Promise((r) => setTimeout(r, 60)); // past the 40ms threshold
+  assert.deepEqual(keys, [[KEYS.crouch, true]]);
+  assert.ok(crouch.hasClass('held'));
+  assert.ok(!crouch.hasClass('latched'), 'a hold is physical, not a toggle');
+
+  root.dispatch('pointerup', pointer(crouch, 1, 0, 0));
+  await new Promise((r) => setTimeout(r, 10)); // still inside the 30ms grace
+  assert.deepEqual(keys, [[KEYS.crouch, true]], 'the key rides out the grace');
+  await new Promise((r) => setTimeout(r, 30)); // grace elapses
+  assert.deepEqual(keys, [[KEYS.crouch, true], [KEYS.crouch, false]]);
+  assert.ok(!crouch.hasClass('held'));
+  controls.detach();
+});
+
+test('a hold on a latched crouch keeps the latch standing after the grace', async () => {
+  const root = makeElement(null);
+  const crouch = latchElement();
+  const keys = [];
+  const controls = new PhoneControls(root, { key: (k, d) => keys.push([k, d]), look() {} },
+    { keys: KEYS, latchHoldMs: 40, latchGraceMs: 30 });
+  controls.attach();
+
+  root.dispatch('pointerdown', pointer(crouch, 1, 0, 0));
+  await new Promise((r) => setTimeout(r, 10));
+  root.dispatch('pointerup', pointer(crouch, 1, 0, 0));
+  assert.deepEqual(keys, [[KEYS.crouch, true]], 'tap latches');
+
+  root.dispatch('pointerdown', pointer(crouch, 2, 0, 0));
+  await new Promise((r) => setTimeout(r, 60)); // the hold timer claims it physically
+  assert.deepEqual(keys, [[KEYS.crouch, true]], 'the key press is idempotent');
+  root.dispatch('pointerup', pointer(crouch, 2, 0, 0));
+  await new Promise((r) => setTimeout(r, 40)); // grace elapses
+  assert.deepEqual(keys, [[KEYS.crouch, true]], 'the latch keeps the key down');
+  assert.ok(crouch.hasClass('latched'));
+  controls.detach();
+});
+
+test('releaseAll stands every latch back up and clears pending grace', () => {
+  const root = makeElement(null);
+  const crouch = latchElement();
+  const keys = [];
+  const controls = new PhoneControls(root, { key: (k, d) => keys.push([k, d]), look() {} },
+    { keys: KEYS, latchHoldMs: 40, latchGraceMs: 20 });
+  controls.attach();
+
+  root.dispatch('pointerdown', pointer(crouch, 1, 0, 0));
+  root.dispatch('pointerup', pointer(crouch, 1, 0, 0));
+  assert.deepEqual(keys, [[KEYS.crouch, true]]);
+
+  controls.releaseAll();
+  assert.deepEqual(keys, [[KEYS.crouch, true], [KEYS.crouch, false]]);
+  assert.ok(!crouch.hasClass('latched'));
 });

@@ -198,6 +198,10 @@ static keyname_t keynames[] =
 	{"TOUCH_MENU_SELECT", K_TOUCH_MENU_SELECT},
 	{"TOUCH_NEXT_WEAPON", K_TOUCH_NEXT_WEAPON},
 	{"TOUCH_PREV_WEAPON", K_TOUCH_PREV_WEAPON},
+	{"TOUCH_WORLD_USE", K_TOUCH_WORLD_USE},
+	{"TOUCH_CROUCH", K_TOUCH_CROUCH},
+	{"TOUCH_ARTIFACT_PREV", K_TOUCH_ARTIFACT_PREV},
+	{"TOUCH_ARTIFACT_NEXT", K_TOUCH_ARTIFACT_NEXT},
 
 	{"PAUSE", K_PAUSE},
 
@@ -1112,6 +1116,10 @@ void Key_Init (void)
 	Key_SetBinding (K_TOUCH_USE, "impulse 23");		/* use artifact */
 	Key_SetBinding (K_TOUCH_NEXT_WEAPON, "impulse 10");	/* next weapon */
 	Key_SetBinding (K_TOUCH_PREV_WEAPON, "impulse 12");	/* prev weapon */
+	Key_SetBinding (K_TOUCH_WORLD_USE, "+use");
+	Key_SetBinding (K_TOUCH_CROUCH, "+crouch");
+	Key_SetBinding (K_TOUCH_ARTIFACT_PREV, "invleft");	/* prev inventory item */
+	Key_SetBinding (K_TOUCH_ARTIFACT_NEXT, "invright");	/* next inventory item */
 	keyreserved[K_TOUCH_MENU] = true;
 	keyreserved[K_TOUCH_MENU_BACK] = true;
 	keyreserved[K_TOUCH_MENU_SELECT] = true;
@@ -1124,6 +1132,10 @@ void Key_Init (void)
 	keyreserved[K_TOUCH_USE] = true;
 	keyreserved[K_TOUCH_NEXT_WEAPON] = true;
 	keyreserved[K_TOUCH_PREV_WEAPON] = true;
+	keyreserved[K_TOUCH_WORLD_USE] = true;
+	keyreserved[K_TOUCH_CROUCH] = true;
+	keyreserved[K_TOUCH_ARTIFACT_PREV] = true;
+	keyreserved[K_TOUCH_ARTIFACT_NEXT] = true;
 
 // default keyboard bindings — inventory cycle on classic Doom/Heretic/Hexen keys
 	Key_SetBinding ('[', "invleft");

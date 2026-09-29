@@ -24,4 +24,8 @@ export const HEXEN_TOUCH_KEYCODES = Object.freeze({
   menuSelect: 281, // K_TOUCH_MENU_SELECT
   nextWeapon: 282, // K_TOUCH_NEXT_WEAPON
   prevWeapon: 283, // K_TOUCH_PREV_WEAPON
+  worldUse: 284, // K_TOUCH_WORLD_USE
+  crouch: 285, // K_TOUCH_CROUCH
+  artifactPrev: 286, // K_TOUCH_ARTIFACT_PREV
+  artifactNext: 287, // K_TOUCH_ARTIFACT_NEXT
 });
