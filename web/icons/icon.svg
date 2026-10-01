@@ -1,68 +1,101 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="YouHexen2 icon">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#16233d"/>
-      <stop offset="0.55" stop-color="#0d1526"/>
-      <stop offset="1" stop-color="#070c16"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b0908"/>
+      <stop offset="0.62" stop-color="#0a0705"/>
+      <stop offset="1" stop-color="#120806"/>
     </linearGradient>
-    <linearGradient id="sheen" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.10"/>
-      <stop offset="0.35" stop-color="#ffffff" stop-opacity="0.02"/>
-      <stop offset="0.6" stop-color="#ffffff" stop-opacity="0"/>
-    </linearGradient>
-    <radialGradient id="heart" cx="0.5" cy="0.42" r="0.55">
-      <stop offset="0" stop-color="#cfe2fb" stop-opacity="0.5"/>
-      <stop offset="0.5" stop-color="#9db8e4" stop-opacity="0.16"/>
-      <stop offset="1" stop-color="#9db8e4" stop-opacity="0"/>
+    <radialGradient id="hellglow" cx="0.5" cy="1.05" r="0.9">
+      <stop offset="0" stop-color="#c8501a" stop-opacity="0.62"/>
+      <stop offset="0.4" stop-color="#7a2c0e" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#7a2c0e" stop-opacity="0"/>
     </radialGradient>
-    <!-- Each arm burns bright at the heart and dissolves toward its tip. -->
-    <linearGradient id="armN" x1="0" y1="1" x2="0" y2="0">
-      <stop offset="0" stop-color="#e4f4ff" stop-opacity="0.9"/>
-      <stop offset="0.45" stop-color="#b9d2f2" stop-opacity="0.35"/>
-      <stop offset="1" stop-color="#b9d2f2" stop-opacity="0"/>
+    <radialGradient id="coldlight" cx="0.35" cy="0" r="0.9">
+      <stop offset="0" stop-color="#9fb8dd" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#9fb8dd" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="iron" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2e2c30"/>
+      <stop offset="0.45" stop-color="#1b1a1e"/>
+      <stop offset="1" stop-color="#0e0d10"/>
     </linearGradient>
-    <linearGradient id="armS" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#e4f4ff" stop-opacity="0.9"/>
-      <stop offset="0.45" stop-color="#b9d2f2" stop-opacity="0.35"/>
-      <stop offset="1" stop-color="#b9d2f2" stop-opacity="0"/>
+    <linearGradient id="bevel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6b5a4a" stop-opacity="0.55"/>
+      <stop offset="0.5" stop-color="#6b5a4a" stop-opacity="0"/>
+      <stop offset="1" stop-color="#c26a2a" stop-opacity="0.7"/>
     </linearGradient>
-    <linearGradient id="armW" x1="1" y1="0" x2="0" y2="0">
-      <stop offset="0" stop-color="#e4f4ff" stop-opacity="0.9"/>
-      <stop offset="0.45" stop-color="#b9d2f2" stop-opacity="0.35"/>
-      <stop offset="1" stop-color="#b9d2f2" stop-opacity="0"/>
+    <linearGradient id="bone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f2ecdc"/>
+      <stop offset="1" stop-color="#c9bfa4"/>
     </linearGradient>
-    <linearGradient id="armE" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#e4f4ff" stop-opacity="0.9"/>
-      <stop offset="0.45" stop-color="#b9d2f2" stop-opacity="0.35"/>
-      <stop offset="1" stop-color="#b9d2f2" stop-opacity="0"/>
-    </linearGradient>
-    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
-      <feGaussianBlur stdDeviation="7"/>
+    <radialGradient id="vignette" cx="0.5" cy="0.46" r="0.75">
+      <stop offset="0.55" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.68"/>
+    </radialGradient>
+    <filter id="soft2" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="4"/>
+    </filter>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.06 0"/>
+      <feComposite operator="over" in2="SourceGraphic"/>
     </filter>
   </defs>
 
   <rect width="512" height="512" fill="url(#bg)"/>
 
-  <!-- The mystical cross: tapered arms, wide at the heart. -->
+  <!-- Hell light seething up from below; cold moonlight from above. -->
+  <rect width="512" height="512" fill="url(#hellglow)"/>
+  <rect width="512" height="512" fill="url(#coldlight)"/>
+
+  <!-- A drowned cathedral arch, ember-lit along its bones. -->
+  <path d="M96 512 L96 300 Q96 190 256 130 Q416 190 416 300 L416 512 Z"
+        fill="#0a0705" opacity="0.7"/>
+  <path d="M96 512 L96 300 Q96 190 256 130 Q416 190 416 300 L416 512"
+        fill="none" stroke="#7a2f10" stroke-width="7" opacity="0.35" filter="url(#soft2)"/>
+  <path d="M96 512 L96 300 Q96 190 256 130 Q416 190 416 300 L416 512"
+        fill="none" stroke="#2a1610" stroke-width="4" opacity="0.7"/>
+
+  <!-- Embers rising. -->
+  <g fill="#d06a1f" filter="url(#soft2)">
+    <circle cx="120" cy="440" r="4" opacity="0.5"/>
+    <circle cx="180" cy="470" r="3" opacity="0.4"/>
+    <circle cx="250" cy="430" r="5" opacity="0.35"/>
+    <circle cx="320" cy="465" r="3" opacity="0.5"/>
+    <circle cx="390" cy="440" r="4" opacity="0.4"/>
+    <circle cx="90" cy="380" r="3" opacity="0.3"/>
+    <circle cx="430" cy="390" r="3" opacity="0.3"/>
+    <circle cx="210" cy="400" r="2.5" opacity="0.55"/>
+    <circle cx="300" cy="395" r="2.5" opacity="0.45"/>
+    <circle cx="350" cy="350" r="2" opacity="0.35"/>
+    <circle cx="160" cy="345" r="2" opacity="0.35"/>
+  </g>
+
+  <!-- The plaque: YouTube's rounded rect, forged in blackened iron. -->
   <g>
-    <path d="M228 256 L244 92 L268 92 L284 256 Z" fill="url(#armN)"/>
-    <path d="M228 256 L244 420 L268 420 L284 256 Z" fill="url(#armS)"/>
-    <path d="M256 228 L92 244 L92 268 L256 284 Z" fill="url(#armW)"/>
-    <path d="M256 228 L420 244 L420 268 L256 284 Z" fill="url(#armE)"/>
+    <rect x="56" y="118" width="400" height="276" rx="72" fill="url(#iron)"
+          stroke="#000000" stroke-width="4"/>
+    <rect x="62" y="124" width="388" height="264" rx="66" fill="none"
+          stroke="url(#bevel)" stroke-width="5"/>
+    <g fill="#2b2a2e" stroke="#0c0b0d" stroke-width="2">
+      <circle cx="112" cy="172" r="10"/>
+      <circle cx="400" cy="172" r="10"/>
+      <circle cx="112" cy="340" r="10"/>
+      <circle cx="400" cy="340" r="10"/>
+    </g>
+    <g fill="#8a6a4a" opacity="0.9">
+      <circle cx="109" cy="169" r="3"/>
+      <circle cx="397" cy="169" r="3"/>
+      <circle cx="109" cy="337" r="3"/>
+      <circle cx="397" cy="337" r="3"/>
+    </g>
   </g>
-  <rect width="512" height="512" fill="url(#heart)"/>
 
-  <!-- Haglaz, the H-rune, etched at the heart: first a soft glow, then the cut. -->
-  <g stroke="#9fc0f0" stroke-width="30" stroke-linecap="round" opacity="0.55" filter="url(#soft)">
-    <line x1="222" y1="196" x2="222" y2="316"/>
-    <line x1="290" y1="196" x2="290" y2="316"/>
-    <line x1="222" y1="228" x2="290" y2="284"/>
-  </g>
-  <g stroke="#e9f2fe" stroke-width="30" stroke-linecap="round" opacity="0.92">
-    <line x1="222" y1="196" x2="222" y2="316"/>
-    <line x1="290" y1="196" x2="290" y2="316"/>
-    <line x1="222" y1="228" x2="290" y2="284"/>
-  </g>
+  <!-- The play triangle, carved from bone: the shadow first, then the cut. -->
+  <path d="M223 187 L223 335 L353 261 Z" fill="#000000" opacity="0.7" transform="translate(5,6)"/>
+  <path d="M218 182 L218 330 L348 256 Z" fill="url(#bone)"/>
+  <path d="M218 182 L348 256 L218 196 Z" fill="#ffffff" opacity="0.18"/>
 
-  <rect width="512" height="512" fill="url(#sheen)"/>
+  <rect width="512" height="512" fill="url(#vignette)"/>
+  <rect width="512" height="512" filter="url(#grain)" opacity="0.6"/>
 </svg>
