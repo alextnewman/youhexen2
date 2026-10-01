@@ -1,11 +1,68 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="YouHexen2 icon">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#2b2242"/>
-      <stop offset="100%" stop-color="#0f0b1a"/>
+      <stop offset="0" stop-color="#16233d"/>
+      <stop offset="0.55" stop-color="#0d1526"/>
+      <stop offset="1" stop-color="#070c16"/>
     </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.10"/>
+      <stop offset="0.35" stop-color="#ffffff" stop-opacity="0.02"/>
+      <stop offset="0.6" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="heart" cx="0.5" cy="0.42" r="0.55">
+      <stop offset="0" stop-color="#cfe2fb" stop-opacity="0.5"/>
+      <stop offset="0.5" stop-color="#9db8e4" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#9db8e4" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Each arm burns bright at the heart and dissolves toward its tip. -->
+    <linearGradient id="armN" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#e4f4ff" stop-opacity="0.9"/>
+      <stop offset="0.45" stop-color="#b9d2f2" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#b9d2f2" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="armS" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e4f4ff" stop-opacity="0.9"/>
+      <stop offset="0.45" stop-color="#b9d2f2" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#b9d2f2" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="armW" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0" stop-color="#e4f4ff" stop-opacity="0.9"/>
+      <stop offset="0.45" stop-color="#b9d2f2" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#b9d2f2" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="armE" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#e4f4ff" stop-opacity="0.9"/>
+      <stop offset="0.45" stop-color="#b9d2f2" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#b9d2f2" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="7"/>
+    </filter>
   </defs>
-  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
-  <path d="M150 116h66v122h80V116h66v280h-66V296h-80v100h-66Z" fill="#ccad63"/>
-  <circle cx="256" cy="256" r="210" fill="none" stroke="#ffffff" stroke-opacity="0.1" stroke-width="14"/>
+
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- The mystical cross: tapered arms, wide at the heart. -->
+  <g>
+    <path d="M228 256 L244 92 L268 92 L284 256 Z" fill="url(#armN)"/>
+    <path d="M228 256 L244 420 L268 420 L284 256 Z" fill="url(#armS)"/>
+    <path d="M256 228 L92 244 L92 268 L256 284 Z" fill="url(#armW)"/>
+    <path d="M256 228 L420 244 L420 268 L256 284 Z" fill="url(#armE)"/>
+  </g>
+  <rect width="512" height="512" fill="url(#heart)"/>
+
+  <!-- Haglaz, the H-rune, etched at the heart: first a soft glow, then the cut. -->
+  <g stroke="#9fc0f0" stroke-width="30" stroke-linecap="round" opacity="0.55" filter="url(#soft)">
+    <line x1="222" y1="196" x2="222" y2="316"/>
+    <line x1="290" y1="196" x2="290" y2="316"/>
+    <line x1="222" y1="228" x2="290" y2="284"/>
+  </g>
+  <g stroke="#e9f2fe" stroke-width="30" stroke-linecap="round" opacity="0.92">
+    <line x1="222" y1="196" x2="222" y2="316"/>
+    <line x1="290" y1="196" x2="290" y2="316"/>
+    <line x1="222" y1="228" x2="290" y2="284"/>
+  </g>
+
+  <rect width="512" height="512" fill="url(#sheen)"/>
 </svg>
