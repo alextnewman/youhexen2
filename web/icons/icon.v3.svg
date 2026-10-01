@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="YouHexen2 icon">
+  <!-- Raster master: the hand-drawn Hexen X is painted and the palette is
+       indexed + dithered at build time, so the SVG embeds the final PNG. -->
+  <image x="0" y="0" width="512" height="512" xlink:href="icon-512.v3.png" href="icon-512.v3.png"/>
+</svg>

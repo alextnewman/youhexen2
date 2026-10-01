@@ -7,10 +7,10 @@ const CORE_ASSETS = [
   './lib/phone-controls.js',
   './manifest.webmanifest',
   './sw.js',
-  './icons/icon.v2.svg',
+  './icons/icon.v3.svg',
   './icons/icon-180.v2.png',
-  './icons/icon-192.v2.png',
-  './icons/icon-512.v2.png',
+  './icons/icon-192.v3.png',
+  './icons/icon-512.v3.png',
   './hexenwail-nitro.js',
   './hexenwail-nitro.wasm',
 ];
